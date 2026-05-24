@@ -1,9 +1,11 @@
-import { useRef, useState, useEffect } from 'react';
-import { PRESETS, type EffectPreset } from './presets';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+
 import { applyDithering } from './effects/dither';
 import { applyScanlines } from './effects/scanlines';
 import { applyNoise } from './effects/noise';
 import { applyChromatic } from './effects/chromatic';
+
+import { PRESETS, type EffectPreset } from './presets';
 
 const hexToRgb = (hex: string) => {
   return {
@@ -31,6 +33,7 @@ const generatePalette = (
     };
   });
 };
+
 const applyPaletteByBrightness = (
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -67,6 +70,7 @@ const applyPaletteByBrightness = (
 
   ctx.putImageData(imageData, 0, 0);
 };
+
 interface GlitchStrip {
   active: boolean;
   widthPct: number;
@@ -76,43 +80,12 @@ interface GlitchStrip {
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tempCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const applyPreset = (preset: EffectPreset) => {
-  setUsePixelation(preset.usePixelation);
-  setPixelSize(preset.pixelSize);
 
-  setUsePalette(preset.usePalette);
-  setColorStart(preset.colorStart);
-  setColorEnd(preset.colorEnd);
-  setSteps(preset.steps);
-  setSwapPaletteColors(preset.swapPaletteColors);
-
-  setUseDither(preset.useDither);
-  setThreshold(preset.threshold);
-
-  setUseGlitch(preset.useGlitch);
-  setGlitch(preset.glitch);
-  setGlitchChaos(preset.glitchChaos);
-  setGlitchWidth(preset.glitchWidth);
-  setGlitchOverrideDither(preset.glitchOverrideDither);
-  setEdgeGlitchOnly(preset.edgeGlitchOnly);
-
-  setGlitchStrips(
-    calcStrips(
-      preset.glitchChaos,
-      preset.glitchWidth
-    )
-  );
-
-  setUseChromatic(preset.useChromatic);
-  setChromaticOffset(preset.chromaticOffset);
-
-  setUseNoise(preset.useNoise);
-  setNoiseAmount(preset.noiseAmount);
-
-  setUseScanlines(preset.useScanlines);
-  setScanlineIntensity(preset.scanlineIntensity);
-};
   const [zoom, setZoom] = useState(1);
+
+  const [selectedPresetName, setSelectedPresetName] =
+    useState('');
+
   const [threshold, setThreshold] = useState(255);
 
   const [originalImage, setOriginalImage] =
@@ -125,8 +98,10 @@ function App() {
     useState('#00FF00');
 
   const [steps, setSteps] = useState(4);
+
   const [swapPaletteColors, setSwapPaletteColors] =
-  useState(false);
+    useState(false);
+
   // PIXELATION
 
   const [usePixelation, setUsePixelation] =
@@ -201,39 +176,86 @@ function App() {
         }))
     );
 
-  const calcStrips = (
-    chaosLevel: number,
-    widthSetting: number
-  ): GlitchStrip[] => {
-    return Array.from({ length: 30 }, () => {
-      const active =
-        chaosLevel === 0
-          ? true
-          : Math.random() * 100 < chaosLevel;
+  const markAsCustom = useCallback(() => {
+    setSelectedPresetName('');
+  }, []);
 
-      const wPct =
-        widthSetting === 100
-          ? 1
-          : 0.3 +
-            Math.random() *
-              (widthSetting / 100 - 0.1);
+  const calcStrips = useCallback(
+    (
+      chaosLevel: number,
+      widthSetting: number
+    ): GlitchStrip[] => {
+      return Array.from({ length: 30 }, () => {
+        const active =
+          chaosLevel === 0
+            ? true
+            : Math.random() * 100 < chaosLevel;
 
-      const maxLeft = 1 - wPct;
+        const wPct =
+          widthSetting === 100
+            ? 1
+            : 0.3 +
+              Math.random() *
+                (widthSetting / 100 - 0.1);
 
-      const lPct =
-        widthSetting === 100
-          ? 0
-          : Math.random() * maxLeft;
+        const maxLeft = 1 - wPct;
 
-      return {
-        active,
-        widthPct: Math.min(1, Math.max(0.1, wPct)),
-        leftPct: lPct
-      };
-    });
-  };
+        const lPct =
+          widthSetting === 100
+            ? 0
+            : Math.random() * maxLeft;
 
-  const saveImage = () => {
+        return {
+          active,
+          widthPct: Math.min(1, Math.max(0.1, wPct)),
+          leftPct: lPct
+        };
+      });
+    },
+    []
+  );
+
+  const applyPreset = useCallback(
+    (preset: EffectPreset) => {
+      setUsePixelation(preset.usePixelation);
+      setPixelSize(preset.pixelSize);
+
+      setUsePalette(preset.usePalette);
+      setColorStart(preset.colorStart);
+      setColorEnd(preset.colorEnd);
+      setSteps(preset.steps);
+      setSwapPaletteColors(preset.swapPaletteColors);
+
+      setUseDither(preset.useDither);
+      setThreshold(preset.threshold);
+
+      setUseGlitch(preset.useGlitch);
+      setGlitch(preset.glitch);
+      setGlitchChaos(preset.glitchChaos);
+      setGlitchWidth(preset.glitchWidth);
+      setGlitchOverrideDither(preset.glitchOverrideDither);
+      setEdgeGlitchOnly(preset.edgeGlitchOnly);
+
+      setGlitchStrips(
+        calcStrips(
+          preset.glitchChaos,
+          preset.glitchWidth
+        )
+      );
+
+      setUseChromatic(preset.useChromatic);
+      setChromaticOffset(preset.chromaticOffset);
+
+      setUseNoise(preset.useNoise);
+      setNoiseAmount(preset.noiseAmount);
+
+      setUseScanlines(preset.useScanlines);
+      setScanlineIntensity(preset.scanlineIntensity);
+    },
+    [calcStrips]
+  );
+
+  const saveImage = useCallback(() => {
     if (!canvasRef.current) return;
 
     const link = document.createElement('a');
@@ -245,9 +267,9 @@ function App() {
     );
 
     link.click();
-  };
+  }, []);
 
-  const processImage = () => {
+  const processImage = useCallback(() => {
     if (!originalImage || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
@@ -290,7 +312,9 @@ function App() {
       tempCanvas.width = smallWidth;
       tempCanvas.height = smallHeight;
 
-      const tempCtx = tempCanvas.getContext('2d')!;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      if (!tempCtx) return;
 
       tempCtx.imageSmoothingEnabled = false;
 
@@ -340,25 +364,24 @@ function App() {
     // PALETTE
 
     const palette = usePalette
-  ? generatePalette(
-      swapPaletteColors ? colorEnd : colorStart,
-      swapPaletteColors ? colorStart : colorEnd,
-      steps
-    )
-  : [
-      { r: 0, g: 0, b: 0 },
-      { r: 255, g: 255, b: 255 }
-    ];
-    
+      ? generatePalette(
+          swapPaletteColors ? colorEnd : colorStart,
+          swapPaletteColors ? colorStart : colorEnd,
+          steps
+        )
+      : [
+          { r: 0, g: 0, b: 0 },
+          { r: 255, g: 255, b: 255 }
+        ];
 
     if (usePalette && !useDither) {
-  applyPaletteByBrightness(
-    ctx,
-    width,
-    height,
-    palette
-  );
-}
+      applyPaletteByBrightness(
+        ctx,
+        width,
+        height,
+        palette
+      );
+    }
 
     // DITHER
 
@@ -384,11 +407,8 @@ function App() {
 
       const data = imageData.data;
 
-      // Копия изображения после палитры / дизеринга / пикселизации
       const processedCopy = new Uint8ClampedArray(data);
 
-      // Если Override Palette включен, глитч берет источник
-      // из изображения до палитры и дизеринга.
       const glitchSource = glitchOverrideDither
         ? prePaletteCopy
         : processedCopy;
@@ -431,8 +451,8 @@ function App() {
 
         if (x < startX || x > endX) continue;
 
-        // EDGE ONLY:
-        // глитч применяется только на контрастных переходах
+        // EDGE ONLY
+
         if (edgeGlitchOnly) {
           if (x < width - 1 && y < height - 1) {
             const rightIdx =
@@ -490,9 +510,6 @@ function App() {
           }
         }
 
-        // Усиление Override Palette:
-        // возвращаем часть зеленого канала из pre-palette изображения,
-        // чтобы режим был заметен поверх палитры/дизеринга.
         if (glitchOverrideDither) {
           data[i + 1] = Math.round(
             data[i + 1] * 0.45 +
@@ -505,6 +522,7 @@ function App() {
     }
 
     // CHROMATIC
+
     if (useChromatic) {
       applyChromatic(ctx, width, height, {
         amount: chromaticOffset
@@ -532,30 +550,24 @@ function App() {
         scanlineIntensity
       );
     }
-  };
-
-  useEffect(() => {
-    if (originalImage) {
-      processImage();
-    }
   }, [
-    threshold,
     originalImage,
-    colorStart,
-    colorEnd,
-    steps,
-    swapPaletteColors,
+    showOriginal,
 
     usePixelation,
     pixelSize,
 
     usePalette,
+    colorStart,
+    colorEnd,
+    steps,
+    swapPaletteColors,
+
     useDither,
+    threshold,
 
     useGlitch,
     glitch,
-    glitchChaos,
-    glitchWidth,
     glitchStrips,
     glitchOverrideDither,
     edgeGlitchOnly,
@@ -567,50 +579,74 @@ function App() {
     noiseAmount,
 
     useScanlines,
-    scanlineIntensity,
-
-    showOriginal
+    scanlineIntensity
   ]);
 
-  const handleImageUpload = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
+  useEffect(() => {
+    if (originalImage) {
+      processImage();
+    }
+  }, [originalImage, processImage]);
 
-    if (!file) return;
+  const handleImageUpload = useCallback(
+    (
+      e: React.ChangeEvent<HTMLInputElement>
+    ) => {
+      const file = e.target.files?.[0];
 
-    const reader = new FileReader();
+      if (!file) return;
 
-    reader.onload = (ev) => {
-      const img = new Image();
+      const reader = new FileReader();
 
-      img.onload = () => {
-        if (canvasRef.current) {
-          canvasRef.current.width = img.width;
-          canvasRef.current.height = img.height;
+      reader.onload = (ev) => {
+        const img = new Image();
 
-          setOriginalImage(img);
-        }
+        img.onload = () => {
+          if (canvasRef.current) {
+            canvasRef.current.width = img.width;
+            canvasRef.current.height = img.height;
+
+            setOriginalImage(img);
+          }
+        };
+
+        img.src = ev.target?.result as string;
       };
 
-      img.src = ev.target?.result as string;
-    };
+      reader.readAsDataURL(file);
+    },
+    []
+  );
 
-    reader.readAsDataURL(file);
-  };
+  const sectionStyle = useMemo(
+    () => ({
+      marginTop: '18px',
+      border: '1px solid #222',
+      borderRadius: '10px',
+      padding: '12px',
+      background: '#111'
+    }),
+    []
+  );
 
-  const sectionStyle = {
-    marginTop: '18px',
-    border: '1px solid #222',
-    borderRadius: '10px',
-    padding: '12px',
-    background: '#111'
-  };
+  const sliderStyle = useMemo(
+    () => ({
+      width: '100%',
+      marginTop: '10px'
+    }),
+    []
+  );
 
-  const sliderStyle = {
-    width: '100%',
-    marginTop: '10px'
-  };
+  const sliderLabelStyle = useMemo(
+    () => ({
+      fontSize: '12px',
+      color: '#666',
+      marginBottom: '4px',
+      marginTop: '12px',
+      letterSpacing: '1px'
+    }),
+    []
+  );
 
   return (
     <div
@@ -765,54 +801,68 @@ function App() {
 
         <input
           type="file"
-          onChange={handleImageUpload}
+          onChange={(e) => {
+            markAsCustom();
+            handleImageUpload(e);
+          }}
           style={{
             width: '100%',
             marginBottom: '20px'
           }}
         />
+
         {/* PRESETS */}
 
-<div style={sectionStyle}>
-  <div
-    style={{
-      fontSize: '12px',
-      color: '#666',
-      marginBottom: '10px',
-      letterSpacing: '1px'
-    }}
-  >
-    PRESETS
-  </div>
+        <div style={sectionStyle}>
+          <div
+            style={{
+              fontSize: '12px',
+              color: '#666',
+              marginBottom: '10px',
+              letterSpacing: '1px'
+            }}
+          >
+            PRESET
+          </div>
 
-  <div
-    style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr',
-      gap: '8px'
-    }}
-  >
-    {PRESETS.map((preset) => (
-      <button
-        key={preset.name}
-        onClick={() => applyPreset(preset)}
-        style={{
-          background: '#0a0a0a',
-          color: '#00ff99',
-          border: '1px solid #222',
-          borderRadius: '8px',
-          padding: '9px 10px',
-          cursor: 'pointer',
-          textAlign: 'left',
-          fontSize: '12px',
-          letterSpacing: '1px'
-        }}
-      >
-        {preset.name}
-      </button>
-    ))}
-  </div>
-</div>
+          <select
+            value={selectedPresetName}
+            onChange={(e) => {
+              const presetName = e.target.value;
+
+              setSelectedPresetName(presetName);
+
+              const preset = PRESETS.find(
+                (item) => item.name === presetName
+              );
+
+              if (preset) {
+                applyPreset(preset);
+              }
+            }}
+            style={{
+              width: '100%',
+              background: '#0a0a0a',
+              color: '#00ff99',
+              border: '1px solid #222',
+              borderRadius: '8px',
+              padding: '10px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              letterSpacing: '1px',
+              outline: 'none'
+            }}
+          >
+            <option value="">CUSTOM</option>
+
+            {PRESETS.map((preset) => (
+              <option key={preset.name} value={preset.name}>
+                {preset.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* ZOOM */}
 
         <div style={sectionStyle}>
@@ -826,9 +876,10 @@ function App() {
             max="5"
             step="0.1"
             value={zoom}
-            onChange={(e) =>
-              setZoom(Number(e.target.value))
-            }
+            onChange={(e) => {
+              markAsCustom();
+              setZoom(Number(e.target.value));
+            }}
             style={sliderStyle}
           />
         </div>
@@ -840,29 +891,37 @@ function App() {
             <input
               type="checkbox"
               checked={usePixelation}
-              onChange={(e) =>
+              onChange={(e) => {
+                markAsCustom();
                 setUsePixelation(
                   e.target.checked
-                )
-              }
+                );
+              }}
             />
             {'  '}
             Pixelation
           </label>
 
           {usePixelation && (
-            <input
-              type="range"
-              min="1"
-              max="32"
-              value={pixelSize}
-              onChange={(e) =>
-                setPixelSize(
-                  Number(e.target.value)
-                )
-              }
-              style={sliderStyle}
-            />
+            <>
+              <div style={sliderLabelStyle}>
+                PIXEL SIZE
+              </div>
+
+              <input
+                type="range"
+                min="1"
+                max="32"
+                value={pixelSize}
+                onChange={(e) => {
+                  markAsCustom();
+                  setPixelSize(
+                    Number(e.target.value)
+                  );
+                }}
+                style={sliderStyle}
+              />
+            </>
           )}
         </div>
 
@@ -873,107 +932,107 @@ function App() {
             <input
               type="checkbox"
               checked={usePalette}
-              onChange={(e) =>
+              onChange={(e) => {
+                markAsCustom();
                 setUsePalette(
                   e.target.checked
-                )
-              }
+                );
+              }}
             />
             {'  '}
             Palette
           </label>
 
           {usePalette && (
-  <>
-    <div
-      style={{
-        display: 'flex',
-        gap: '10px',
-        marginTop: '12px',
-        alignItems: 'center'
-      }}
-    >
-      <input
-        type="color"
-        value={colorStart}
-        onChange={(e) =>
-          setColorStart(
-            e.target.value
-          )
-        }
-        style={{
-          width: '42px',
-          height: '28px',
-          padding: 0,
-          border: 'none',
-          outline: 'none',
-          background: 'transparent',
-          cursor: 'pointer'
-        }}
-      />
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  marginTop: '12px',
+                  alignItems: 'center'
+                }}
+              >
+                <input
+                  type="color"
+                  value={colorStart}
+                  onChange={(e) => {
+                    markAsCustom();
+                    setColorStart(
+                      e.target.value
+                    );
+                  }}
+                  style={{
+                    width: '42px',
+                    height: '28px',
+                    padding: 0,
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer'
+                  }}
+                />
 
-      <input
-        type="color"
-        value={colorEnd}
-        onChange={(e) =>
-          setColorEnd(
-            e.target.value
-          )
-        }
-        style={{
-          width: '42px',
-          height: '28px',
-          padding: 0,
-          border: 'none',
-          outline: 'none',
-          background: 'transparent',
-          cursor: 'pointer'
-        }}
-      />
-    </div>
+                <input
+                  type="color"
+                  value={colorEnd}
+                  onChange={(e) => {
+                    markAsCustom();
+                    setColorEnd(
+                      e.target.value
+                    );
+                  }}
+                  style={{
+                    width: '42px',
+                    height: '28px',
+                    padding: 0,
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
 
-    <div
-      style={{
-        fontSize: '12px',
-        color: '#666',
-        marginBottom: '4px',
-        marginTop: '14px'
-      }}
-    >
-      COLOR STEPS
-    </div>
+              <div style={sliderLabelStyle}>
+                COLOR STEPS
+              </div>
 
-    <input
-      type="range"
-      min="2"
-      max="16"
-      value={steps}
-      onChange={(e) =>
-        setSteps(
-          Number(e.target.value)
-        )
-      }
-      style={sliderStyle}
-    />
+              <input
+                type="range"
+                min="2"
+                max="16"
+                value={steps}
+                onChange={(e) => {
+                  markAsCustom();
+                  setSteps(
+                    Number(e.target.value)
+                  );
+                }}
+                style={sliderStyle}
+              />
 
-    <label
-  style={{
-    display: 'block',
-    marginTop: '12px'
-  }}
->
-  <input
-    type="checkbox"
-    checked={swapPaletteColors}
-    onChange={(e) =>
-      setSwapPaletteColors(e.target.checked)
-    }
-  />
-  {'  '}
-  Swap Colors
-</label>
-  </>
-)}
+              <label
+                style={{
+                  display: 'block',
+                  marginTop: '12px'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={swapPaletteColors}
+                  onChange={(e) => {
+                    markAsCustom();
+                    setSwapPaletteColors(
+                      e.target.checked
+                    );
+                  }}
+                />
+                {'  '}
+                Swap Colors
+              </label>
+            </>
+          )}
         </div>
 
         {/* DITHER */}
@@ -983,29 +1042,37 @@ function App() {
             <input
               type="checkbox"
               checked={useDither}
-              onChange={(e) =>
+              onChange={(e) => {
+                markAsCustom();
                 setUseDither(
                   e.target.checked
-                )
-              }
+                );
+              }}
             />
             {'  '}
             Dither
           </label>
 
           {useDither && (
-            <input
-              type="range"
-              min="0"
-              max="255"
-              value={threshold}
-              onChange={(e) =>
-                setThreshold(
-                  Number(e.target.value)
-                )
-              }
-              style={sliderStyle}
-            />
+            <>
+              <div style={sliderLabelStyle}>
+                INTENSITY
+              </div>
+
+              <input
+                type="range"
+                min="0"
+                max="255"
+                value={threshold}
+                onChange={(e) => {
+                  markAsCustom();
+                  setThreshold(
+                    Number(e.target.value)
+                  );
+                }}
+                style={sliderStyle}
+              />
+            </>
           )}
         </div>
 
@@ -1016,9 +1083,10 @@ function App() {
             <input
               type="checkbox"
               checked={useGlitch}
-              onChange={(e) =>
-                setUseGlitch(e.target.checked)
-              }
+              onChange={(e) => {
+                markAsCustom();
+                setUseGlitch(e.target.checked);
+              }}
             />
             {'  '}
             Glitch
@@ -1029,13 +1097,7 @@ function App() {
               {/* SHIFT */}
 
               <div style={{ marginBottom: '16px' }}>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: '#666',
-                    marginBottom: '4px'
-                  }}
-                >
+                <div style={sliderLabelStyle}>
                   SHIFT
                 </div>
 
@@ -1044,9 +1106,10 @@ function App() {
                   min="0"
                   max="20"
                   value={glitch}
-                  onChange={(e) =>
-                    setGlitch(Number(e.target.value))
-                  }
+                  onChange={(e) => {
+                    markAsCustom();
+                    setGlitch(Number(e.target.value));
+                  }}
                   style={sliderStyle}
                 />
               </div>
@@ -1054,13 +1117,7 @@ function App() {
               {/* WIDTH */}
 
               <div style={{ marginBottom: '16px' }}>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: '#666',
-                    marginBottom: '4px'
-                  }}
-                >
+                <div style={sliderLabelStyle}>
                   WIDTH
                 </div>
 
@@ -1071,6 +1128,8 @@ function App() {
                   step="5"
                   value={glitchWidth}
                   onChange={(e) => {
+                    markAsCustom();
+
                     const w = Number(e.target.value);
 
                     setGlitchWidth(w);
@@ -1086,13 +1145,7 @@ function App() {
               {/* CHAOS */}
 
               <div style={{ marginBottom: '16px' }}>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: '#666',
-                    marginBottom: '4px'
-                  }}
-                >
+                <div style={sliderLabelStyle}>
                   CHAOS
                 </div>
 
@@ -1109,6 +1162,8 @@ function App() {
                     max="100"
                     value={glitchChaos}
                     onChange={(e) => {
+                      markAsCustom();
+
                       const val = Number(e.target.value);
 
                       setGlitchChaos(val);
@@ -1127,14 +1182,16 @@ function App() {
                   />
 
                   <button
-                    onClick={() =>
+                    onClick={() => {
+                      markAsCustom();
+
                       setGlitchStrips(
                         calcStrips(
                           glitchChaos,
                           glitchWidth
                         )
-                      )
-                    }
+                      );
+                    }}
                     disabled={glitchChaos === 0}
                     style={{
                       width: '36px',
@@ -1170,7 +1227,8 @@ function App() {
                   style={{
                     fontSize: '12px',
                     color: '#666',
-                    marginBottom: '10px'
+                    marginBottom: '10px',
+                    letterSpacing: '1px'
                   }}
                 >
                   MODES
@@ -1185,11 +1243,13 @@ function App() {
                   <input
                     type="checkbox"
                     checked={edgeGlitchOnly}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      markAsCustom();
+
                       setEdgeGlitchOnly(
                         e.target.checked
-                      )
-                    }
+                      );
+                    }}
                   />
                   {'  '}
                   Edge Only
@@ -1203,11 +1263,13 @@ function App() {
                   <input
                     type="checkbox"
                     checked={glitchOverrideDither}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      markAsCustom();
+
                       setGlitchOverrideDither(
                         e.target.checked
-                      )
-                    }
+                      );
+                    }}
                   />
                   {'  '}
                   Override Palette
@@ -1224,29 +1286,39 @@ function App() {
             <input
               type="checkbox"
               checked={useChromatic}
-              onChange={(e) =>
+              onChange={(e) => {
+                markAsCustom();
+
                 setUseChromatic(
                   e.target.checked
-                )
-              }
+                );
+              }}
             />
             {'  '}
             Chromatic
           </label>
 
           {useChromatic && (
-            <input
-              type="range"
-              min="0"
-              max="20"
-              value={chromaticOffset}
-              onChange={(e) =>
-                setChromaticOffset(
-                  Number(e.target.value)
-                )
-              }
-              style={sliderStyle}
-            />
+            <>
+              <div style={sliderLabelStyle}>
+                RGB OFFSET
+              </div>
+
+              <input
+                type="range"
+                min="0"
+                max="20"
+                value={chromaticOffset}
+                onChange={(e) => {
+                  markAsCustom();
+
+                  setChromaticOffset(
+                    Number(e.target.value)
+                  );
+                }}
+                style={sliderStyle}
+              />
+            </>
           )}
         </div>
 
@@ -1257,29 +1329,39 @@ function App() {
             <input
               type="checkbox"
               checked={useNoise}
-              onChange={(e) =>
+              onChange={(e) => {
+                markAsCustom();
+
                 setUseNoise(
                   e.target.checked
-                )
-              }
+                );
+              }}
             />
             {'  '}
             Noise
           </label>
 
           {useNoise && (
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={noiseAmount}
-              onChange={(e) =>
-                setNoiseAmount(
-                  Number(e.target.value)
-                )
-              }
-              style={sliderStyle}
-            />
+            <>
+              <div style={sliderLabelStyle}>
+                AMOUNT
+              </div>
+
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={noiseAmount}
+                onChange={(e) => {
+                  markAsCustom();
+
+                  setNoiseAmount(
+                    Number(e.target.value)
+                  );
+                }}
+                style={sliderStyle}
+              />
+            </>
           )}
         </div>
 
@@ -1290,30 +1372,40 @@ function App() {
             <input
               type="checkbox"
               checked={useScanlines}
-              onChange={(e) =>
+              onChange={(e) => {
+                markAsCustom();
+
                 setUseScanlines(
                   e.target.checked
-                )
-              }
+                );
+              }}
             />
             {'  '}
             Scanlines
           </label>
 
           {useScanlines && (
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={scanlineIntensity}
-              onChange={(e) =>
-                setScanlineIntensity(
-                  Number(e.target.value)
-                )
-              }
-              style={sliderStyle}
-            />
+            <>
+              <div style={sliderLabelStyle}>
+                INTENSITY
+              </div>
+
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={scanlineIntensity}
+                onChange={(e) => {
+                  markAsCustom();
+
+                  setScanlineIntensity(
+                    Number(e.target.value)
+                  );
+                }}
+                style={sliderStyle}
+              />
+            </>
           )}
         </div>
       </div>
