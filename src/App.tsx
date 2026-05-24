@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-
+import { PRESETS, type EffectPreset } from './presets';
 import { applyDithering } from './effects/dither';
 import { applyScanlines } from './effects/scanlines';
 import { applyNoise } from './effects/noise';
@@ -76,7 +76,42 @@ interface GlitchStrip {
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tempCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const applyPreset = (preset: EffectPreset) => {
+  setUsePixelation(preset.usePixelation);
+  setPixelSize(preset.pixelSize);
 
+  setUsePalette(preset.usePalette);
+  setColorStart(preset.colorStart);
+  setColorEnd(preset.colorEnd);
+  setSteps(preset.steps);
+  setSwapPaletteColors(preset.swapPaletteColors);
+
+  setUseDither(preset.useDither);
+  setThreshold(preset.threshold);
+
+  setUseGlitch(preset.useGlitch);
+  setGlitch(preset.glitch);
+  setGlitchChaos(preset.glitchChaos);
+  setGlitchWidth(preset.glitchWidth);
+  setGlitchOverrideDither(preset.glitchOverrideDither);
+  setEdgeGlitchOnly(preset.edgeGlitchOnly);
+
+  setGlitchStrips(
+    calcStrips(
+      preset.glitchChaos,
+      preset.glitchWidth
+    )
+  );
+
+  setUseChromatic(preset.useChromatic);
+  setChromaticOffset(preset.chromaticOffset);
+
+  setUseNoise(preset.useNoise);
+  setNoiseAmount(preset.noiseAmount);
+
+  setUseScanlines(preset.useScanlines);
+  setScanlineIntensity(preset.scanlineIntensity);
+};
   const [zoom, setZoom] = useState(1);
   const [threshold, setThreshold] = useState(255);
 
@@ -736,7 +771,48 @@ function App() {
             marginBottom: '20px'
           }}
         />
+        {/* PRESETS */}
 
+<div style={sectionStyle}>
+  <div
+    style={{
+      fontSize: '12px',
+      color: '#666',
+      marginBottom: '10px',
+      letterSpacing: '1px'
+    }}
+  >
+    PRESETS
+  </div>
+
+  <div
+    style={{
+      display: 'grid',
+      gridTemplateColumns: '1fr',
+      gap: '8px'
+    }}
+  >
+    {PRESETS.map((preset) => (
+      <button
+        key={preset.name}
+        onClick={() => applyPreset(preset)}
+        style={{
+          background: '#0a0a0a',
+          color: '#00ff99',
+          border: '1px solid #222',
+          borderRadius: '8px',
+          padding: '9px 10px',
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontSize: '12px',
+          letterSpacing: '1px'
+        }}
+      >
+        {preset.name}
+      </button>
+    ))}
+  </div>
+</div>
         {/* ZOOM */}
 
         <div style={sectionStyle}>
