@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-
+import { applyAscii } from './effects/ascii';
 import { applyDithering } from './effects/dither';
 import { applyScanlines } from './effects/scanlines';
 import { applyNoise } from './effects/noise';
@@ -78,6 +78,20 @@ interface GlitchStrip {
 }
 
 function App() {
+  const [useAscii, setUseAscii] =
+  useState(false);
+
+const [asciiCellSize, setAsciiCellSize] =
+  useState(10);
+
+const [asciiOpacity, setAsciiOpacity] =
+  useState(0.8);
+
+const [asciiMode, setAsciiMode] =
+  useState<'overlay' | 'replace'>('overlay');
+
+const [asciiColor, setAsciiColor] =
+  useState('#00ff99');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tempCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -245,6 +259,12 @@ function App() {
 
       setUseChromatic(preset.useChromatic);
       setChromaticOffset(preset.chromaticOffset);
+
+      setUseAscii(preset.useAscii);
+      setAsciiCellSize(preset.asciiCellSize);
+      setAsciiOpacity(preset.asciiOpacity);
+      setAsciiMode(preset.asciiMode);
+      setAsciiColor(preset.asciiColor);
 
       setUseNoise(preset.useNoise);
       setNoiseAmount(preset.noiseAmount);
@@ -529,6 +549,17 @@ function App() {
       });
     }
 
+    // ASCII
+
+    if (useAscii) {
+      applyAscii(ctx, width, height, {
+        cellSize: asciiCellSize,
+        opacity: asciiOpacity,
+        mode: asciiMode,
+        color: asciiColor
+      });
+    }
+
     // NOISE
 
     if (useNoise) {
@@ -574,6 +605,12 @@ function App() {
 
     useChromatic,
     chromaticOffset,
+
+    useAscii,
+    asciiCellSize,
+    asciiOpacity,
+    asciiMode,
+    asciiColor,
 
     useNoise,
     noiseAmount,
@@ -1321,6 +1358,110 @@ function App() {
             </>
           )}
         </div>
+
+          {/* ASCII */}
+
+<div style={sectionStyle}>
+  <label>
+    <input
+      type="checkbox"
+      checked={useAscii}
+      onChange={(e) => {
+        markAsCustom();
+        setUseAscii(e.target.checked);
+      }}
+    />
+    {'  '}
+    ASCII
+  </label>
+
+  {useAscii && (
+    <>
+      <div style={sliderLabelStyle}>
+        CELL SIZE
+      </div>
+
+      <input
+        type="range"
+        min="4"
+        max="32"
+        step="1"
+        value={asciiCellSize}
+        onChange={(e) => {
+          markAsCustom();
+          setAsciiCellSize(Number(e.target.value));
+        }}
+        style={sliderStyle}
+      />
+
+      <div style={sliderLabelStyle}>
+        OPACITY
+      </div>
+
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={asciiOpacity}
+        onChange={(e) => {
+          markAsCustom();
+          setAsciiOpacity(Number(e.target.value));
+        }}
+        style={sliderStyle}
+      />
+
+      <div style={sliderLabelStyle}>
+        MODE
+      </div>
+
+      <select
+        value={asciiMode}
+        onChange={(e) => {
+          markAsCustom();
+          setAsciiMode(e.target.value as 'overlay' | 'replace');
+        }}
+        style={{
+          width: '100%',
+          background: '#0a0a0a',
+          color: '#00ff99',
+          border: '1px solid #222',
+          borderRadius: '8px',
+          padding: '10px',
+          cursor: 'pointer',
+          fontSize: '12px',
+          letterSpacing: '1px',
+          outline: 'none'
+        }}
+      >
+        <option value="overlay">OVERLAY</option>
+        <option value="replace">REPLACE</option>
+      </select>
+
+      <div style={sliderLabelStyle}>
+        COLOR
+      </div>
+
+      <input
+        type="color"
+        value={asciiColor}
+        onChange={(e) => {
+          markAsCustom();
+          setAsciiColor(e.target.value);
+        }}
+        style={{
+          width: '42px',
+          height: '28px',
+          padding: 0,
+          border: 'none',
+          outline: 'none',
+          background: 'transparent',
+          cursor: 'pointer'
+        }}
+      />
+    </>
+  )}
+</div>
 
         {/* NOISE */}
 
