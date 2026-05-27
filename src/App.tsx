@@ -4,7 +4,7 @@ import { applyDithering } from './effects/dither';
 import { applyScanlines } from './effects/scanlines';
 import { applyNoise } from './effects/noise';
 import { applyChromatic } from './effects/chromatic';
-
+import { applyPsx } from './effects/psx';
 import { PRESETS, type EffectPreset } from './presets';
 
 const hexToRgb = (hex: string) => {
@@ -189,7 +189,22 @@ const [asciiColor, setAsciiColor] =
           leftPct: 0
         }))
     );
+    const [usePsx, setUsePsx] = useState(false);
+    const [psxResolutionScale, setPsxResolutionScale] = useState(4);
+    const [psxColorLevels, setPsxColorLevels] = useState(8);
+    const [psxWarpAmount, setPsxWarpAmount] = useState(2);
+    const [psxJitterAmount, setPsxJitterAmount] = useState(2);
+    const [psxDitherStrength, setPsxDitherStrength] = useState(0.45);
 
+    const [psxBlockSize, setPsxBlockSize] =
+      useState(12);
+
+    const [psxCompositeBlur, setPsxCompositeBlur] =
+      useState(0.8);
+
+    const [psxChromaBleed, setPsxChromaBleed] =
+      useState(1);
+      
   const markAsCustom = useCallback(() => {
     setSelectedPresetName('');
   }, []);
@@ -233,6 +248,16 @@ const [asciiColor, setAsciiColor] =
     (preset: EffectPreset) => {
       setUsePixelation(preset.usePixelation);
       setPixelSize(preset.pixelSize);
+
+      setUsePsx(preset.usePsx);
+      setPsxResolutionScale(preset.psxResolutionScale);
+      setPsxColorLevels(preset.psxColorLevels);
+      setPsxWarpAmount(preset.psxWarpAmount);
+      setPsxJitterAmount(preset.psxJitterAmount);
+      setPsxDitherStrength(preset.psxDitherStrength);
+      setPsxBlockSize(preset.psxBlockSize);
+      setPsxCompositeBlur(preset.psxCompositeBlur);
+      setPsxChromaBleed(preset.psxChromaBleed);
 
       setUsePalette(preset.usePalette);
       setColorStart(preset.colorStart);
@@ -368,6 +393,22 @@ const [asciiColor, setAsciiColor] =
       );
     }
 
+
+    // PSX LOOK
+
+if (usePsx) {
+  applyPsx(ctx, width, height, {
+    resolutionScale: psxResolutionScale,
+    colorLevels: psxColorLevels,
+    warpAmount: psxWarpAmount,
+    jitterAmount: psxJitterAmount,
+    ditherStrength: psxDitherStrength,
+    blockSize: psxBlockSize,
+    compositeBlur: psxCompositeBlur,
+    chromaBleed: psxChromaBleed
+  });
+}
+
     // SAVE PRE-PALETTE IMAGE FOR GLITCH OVERRIDE
 
     const prePaletteImageData = ctx.getImageData(
@@ -380,6 +421,8 @@ const [asciiColor, setAsciiColor] =
     const prePaletteCopy = new Uint8ClampedArray(
       prePaletteImageData.data
     );
+    
+    
 
     // PALETTE
 
@@ -616,7 +659,17 @@ const [asciiColor, setAsciiColor] =
     noiseAmount,
 
     useScanlines,
-    scanlineIntensity
+    scanlineIntensity,
+
+    usePsx,
+    psxResolutionScale,
+    psxColorLevels,
+    psxWarpAmount,
+    psxJitterAmount,
+    psxDitherStrength,
+    psxBlockSize,
+    psxCompositeBlur,
+    psxChromaBleed,
   ]);
 
   useEffect(() => {
@@ -962,6 +1015,178 @@ const [asciiColor, setAsciiColor] =
           )}
         </div>
 
+          {/* PSX LOOK */}
+
+<div style={sectionStyle}>
+  <label>
+    <input
+      type="checkbox"
+      checked={usePsx}
+      onChange={(e) => {
+        markAsCustom();
+        setUsePsx(e.target.checked);
+      }}
+    />
+    {'  '}
+    PS1 Look
+  </label>
+
+  {usePsx && (
+    <>
+      <div style={sliderLabelStyle}>
+        RESOLUTION SCALE
+      </div>
+
+      <input
+        type="range"
+        min="1"
+        max="12"
+        step="1"
+        value={psxResolutionScale}
+        onChange={(e) => {
+          markAsCustom();
+          setPsxResolutionScale(
+            Number(e.target.value)
+          );
+        }}
+        style={sliderStyle}
+      />
+
+      <div style={sliderLabelStyle}>
+        COLOR LEVELS
+      </div>
+
+      <input
+        type="range"
+        min="2"
+        max="32"
+        step="1"
+        value={psxColorLevels}
+        onChange={(e) => {
+          markAsCustom();
+          setPsxColorLevels(
+            Number(e.target.value)
+          );
+        }}
+        style={sliderStyle}
+      />
+
+      <div style={sliderLabelStyle}>
+        TEXTURE WARP
+      </div>
+
+      <input
+        type="range"
+        min="0"
+        max="20"
+        step="1"
+        value={psxWarpAmount}
+        onChange={(e) => {
+          markAsCustom();
+          setPsxWarpAmount(
+            Number(e.target.value)
+          );
+        }}
+        style={sliderStyle}
+      />
+
+      <div style={sliderLabelStyle}>
+        JITTER
+      </div>
+
+      <input
+        type="range"
+        min="0"
+        max="20"
+        step="1"
+        value={psxJitterAmount}
+        onChange={(e) => {
+          markAsCustom();
+          setPsxJitterAmount(
+            Number(e.target.value)
+          );
+        }}
+        style={sliderStyle}
+      />
+
+      <div style={sliderLabelStyle}>
+        BLOCK SIZE
+      </div>
+
+      <input
+        type="range"
+        min="4"
+        max="48"
+        step="1"
+        value={psxBlockSize}
+        onChange={(e) => {
+          markAsCustom();
+          setPsxBlockSize(
+            Number(e.target.value)
+          );
+        }}
+        style={sliderStyle}
+      />
+
+      <div style={sliderLabelStyle}>
+        DITHER
+      </div>
+
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={psxDitherStrength}
+        onChange={(e) => {
+          markAsCustom();
+          setPsxDitherStrength(
+            Number(e.target.value)
+          );
+        }}
+        style={sliderStyle}
+      />
+
+      <div style={sliderLabelStyle}>
+        COMPOSITE BLUR
+      </div>
+
+      <input
+        type="range"
+        min="0"
+        max="6"
+        step="0.1"
+        value={psxCompositeBlur}
+        onChange={(e) => {
+          markAsCustom();
+          setPsxCompositeBlur(
+            Number(e.target.value)
+          );
+        }}
+        style={sliderStyle}
+      />
+
+      <div style={sliderLabelStyle}>
+        CHROMA BLEED
+      </div>
+
+      <input
+        type="range"
+        min="0"
+        max="8"
+        step="1"
+        value={psxChromaBleed}
+        onChange={(e) => {
+          markAsCustom();
+          setPsxChromaBleed(
+            Number(e.target.value)
+          );
+        }}
+        style={sliderStyle}
+      />
+    </>
+  )}
+</div>
         {/* PALETTE */}
 
         <div style={sectionStyle}>
