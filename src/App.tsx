@@ -1,13 +1,163 @@
-import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { applyAscii } from './effects/ascii';
-import { applyDithering } from './effects/dither';
+import {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type CSSProperties
+} from 'react';
+
+import {
+  applyDithering,
+  type DitherMode
+} from './effects/dither';
+
 import { applyScanlines } from './effects/scanlines';
 import { applyNoise } from './effects/noise';
 import { applyChromatic } from './effects/chromatic';
+import { applyAscii } from './effects/ascii';
 import { applyPsx } from './effects/psx';
-import { PRESETS, type EffectPreset } from './presets';
+import { applyPixelSort } from './effects/pixelSort';
 
-const hexToRgb = (hex: string) => {
+import {
+  applyDataOverlay,
+  type DataOverlayMode
+} from './effects/dataOverlay';
+
+import {
+  applyHudFrame,
+  type HudFrameStyle
+} from './effects/hudFrame';
+
+import {
+  applyPatternDither,
+  type PatternDitherShape
+} from './effects/patternDither';
+
+import {
+  applySignalWaves,
+  type SignalWavesMode
+} from './effects/signalWaves';
+
+import { PRESETS, type EffectPreset } from './presets';
+import { createRandom, createSeed } from './utils/random';
+
+import { UiCheckbox } from './components/UiCheckbox';
+import { UiSlider } from './components/UiSlider';
+import { UiSelect } from './components/UiSelect';
+import { UiColorInput } from './components/UiColorInput';
+
+type RgbColor = {
+  r: number;
+  g: number;
+  b: number;
+};
+
+type RandomGenerator = () => number;
+
+type GlitchStrip = {
+  active: boolean;
+  widthPct: number;
+  leftPct: number;
+};
+
+type ExportFormat = 'png' | 'jpeg';
+type ExportDpi = 72 | 150 | 300;
+
+type EffectsSnapshot = {
+  selectedPresetName: string;
+
+  usePixelation: boolean;
+  pixelSize: number;
+
+  usePsx: boolean;
+  psxResolutionScale: number;
+  psxColorLevels: number;
+  psxWarpAmount: number;
+  psxJitterAmount: number;
+  psxDitherStrength: number;
+  psxBlockSize: number;
+  psxCompositeBlur: number;
+  psxChromaBleed: number;
+
+  usePixelSort: boolean;
+  pixelSortDirection: 'horizontal' | 'vertical';
+  pixelSortMode: 'bright' | 'dark' | 'all';
+  pixelSortThreshold: number;
+  pixelSortAmount: number;
+
+  usePalette: boolean;
+  colorStart: string;
+  colorEnd: string;
+  steps: number;
+  swapPaletteColors: boolean;
+
+  useDither: boolean;
+  ditherMode: DitherMode;
+  threshold: number;
+
+  useGlitch: boolean;
+  glitch: number;
+  glitchChaos: number;
+  glitchWidth: number;
+  glitchOverrideDither: boolean;
+  edgeGlitchOnly: boolean;
+
+  useChromatic: boolean;
+  chromaticOffset: number;
+
+  useAscii: boolean;
+  asciiCellSize: number;
+  asciiOpacity: number;
+  asciiMode: 'overlay' | 'replace';
+  asciiColor: string;
+
+  usePatternDither: boolean;
+  patternDitherShape: PatternDitherShape;
+  patternDitherScale: number;
+  patternDitherDensity: number;
+  patternDitherOpacity: number;
+  patternDitherColor: string;
+  patternDitherBackgroundColor: string;
+  patternDitherInvert: boolean;
+  patternDitherReplaceImage: boolean;
+
+  useDataOverlay: boolean;
+  dataOverlayMode: DataOverlayMode;
+  dataOverlayDensity: number;
+  dataOverlayFontSize: number;
+  dataOverlayOpacity: number;
+  dataOverlayColor: string;
+  dataOverlayCustomText: string;
+
+  useHudFrame: boolean;
+  hudFrameStyle: HudFrameStyle;
+  hudFrameOpacity: number;
+  hudFrameColor: string;
+  hudFrameShowGrid: boolean;
+  hudFrameShowLabels: boolean;
+  hudFrameShowCornerMarks: boolean;
+  hudFrameSafeArea: number;
+
+  useSignalWaves: boolean;
+  signalWavesMode: SignalWavesMode;
+  signalWavesFrequency: number;
+  signalWavesAmplitude: number;
+  signalWavesDensity: number;
+  signalWavesOpacity: number;
+  signalWavesColor: string;
+  signalWavesBackgroundColor: string;
+  signalWavesReplaceImage: boolean;
+  signalWavesReactToImage: boolean;
+
+  useNoise: boolean;
+  noiseAmount: number;
+
+  useScanlines: boolean;
+  scanlineIntensity: number;
+};
+
+const hexToRgb = (hex: string): RgbColor => {
   return {
     r: parseInt(hex.slice(1, 3), 16),
     g: parseInt(hex.slice(3, 5), 16),
@@ -19,7 +169,7 @@ const generatePalette = (
   start: string,
   end: string,
   count: number
-) => {
+): RgbColor[] => {
   const s = hexToRgb(start);
   const e = hexToRgb(end);
 
@@ -34,31 +184,34 @@ const generatePalette = (
   });
 };
 
+const getBrightness = (
+  r: number,
+  g: number,
+  b: number
+) => {
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+};
+
 const applyPaletteByBrightness = (
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  palette: { r: number; g: number; b: number }[]
+  palette: RgbColor[]
 ) => {
   const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
-
   const lastIndex = palette.length - 1;
 
   for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-
     const brightness =
-      0.299 * r +
-      0.587 * g +
-      0.114 * b;
+      getBrightness(data[i], data[i + 1], data[i + 2]) / 255;
 
-    const normalized = brightness / 255;
-
-    const paletteIndex = Math.round(
-      normalized * lastIndex
+    const paletteIndex = Math.max(
+      0,
+      Math.min(
+        lastIndex,
+        Math.round(brightness * lastIndex)
+      )
     );
 
     const color = palette[paletteIndex];
@@ -71,360 +224,927 @@ const applyPaletteByBrightness = (
   ctx.putImageData(imageData, 0, 0);
 };
 
-interface GlitchStrip {
-  active: boolean;
-  widthPct: number;
-  leftPct: number;
-}
-
 function App() {
-  const [useAscii, setUseAscii] =
-  useState(false);
-
-const [asciiCellSize, setAsciiCellSize] =
-  useState(10);
-
-const [asciiOpacity, setAsciiOpacity] =
-  useState(0.8);
-
-const [asciiMode, setAsciiMode] =
-  useState<'overlay' | 'replace'>('overlay');
-
-const [asciiColor, setAsciiColor] =
-  useState('#00ff99');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tempCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [zoom, setZoom] = useState(1);
-
-  const [selectedPresetName, setSelectedPresetName] =
-    useState('');
-
-  const [threshold, setThreshold] = useState(255);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const panStartRef = useRef({ x: 0, y: 0 });
 
   const [originalImage, setOriginalImage] =
     useState<HTMLImageElement | null>(null);
 
-  const [colorStart, setColorStart] =
-    useState('#000000');
+  const [selectedFileName, setSelectedFileName] = useState('');
 
-  const [colorEnd, setColorEnd] =
-    useState('#00FF00');
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
 
+  const [selectedPresetName, setSelectedPresetName] =
+    useState('CUSTOM');
+
+  const [lastEffectsSnapshot, setLastEffectsSnapshot] =
+    useState<EffectsSnapshot | null>(null);
+
+  const [useSeed, setUseSeed] = useState(false);
+  const [seed, setSeed] = useState(123456);
+
+  const [exportFormat, setExportFormat] =
+    useState<ExportFormat>('png');
+
+  const [exportDpi, setExportDpi] =
+    useState<ExportDpi>(72);
+
+  const [usePixelation, setUsePixelation] = useState(false);
+  const [pixelSize, setPixelSize] = useState(4);
+
+  const [usePsx, setUsePsx] = useState(false);
+  const [psxResolutionScale, setPsxResolutionScale] =
+    useState(4);
+  const [psxColorLevels, setPsxColorLevels] = useState(8);
+  const [psxWarpAmount, setPsxWarpAmount] = useState(2);
+  const [psxJitterAmount, setPsxJitterAmount] = useState(2);
+  const [psxDitherStrength, setPsxDitherStrength] =
+    useState(0.45);
+  const [psxBlockSize, setPsxBlockSize] = useState(12);
+  const [psxCompositeBlur, setPsxCompositeBlur] =
+    useState(0.8);
+  const [psxChromaBleed, setPsxChromaBleed] = useState(1);
+
+  const [usePixelSort, setUsePixelSort] = useState(false);
+  const [pixelSortDirection, setPixelSortDirection] =
+    useState<'horizontal' | 'vertical'>('horizontal');
+  const [pixelSortMode, setPixelSortMode] =
+    useState<'bright' | 'dark' | 'all'>('bright');
+  const [pixelSortThreshold, setPixelSortThreshold] =
+    useState(160);
+  const [pixelSortAmount, setPixelSortAmount] =
+    useState(0.75);
+
+  const [usePalette, setUsePalette] = useState(false);
+  const [colorStart, setColorStart] = useState('#000000');
+  const [colorEnd, setColorEnd] = useState('#00ff00');
   const [steps, setSteps] = useState(4);
-
   const [swapPaletteColors, setSwapPaletteColors] =
     useState(false);
 
-  // PIXELATION
+  const [useDither, setUseDither] = useState(false);
+  const [ditherMode, setDitherMode] =
+    useState<DitherMode>('floyd-steinberg');
+  const [threshold, setThreshold] = useState(255);
 
-  const [usePixelation, setUsePixelation] =
-    useState(false);
-
-  const [pixelSize, setPixelSize] = useState(4);
-
-  // EFFECTS
-
-  const [usePalette, setUsePalette] =
-    useState(false);
-
-  const [useDither, setUseDither] =
-    useState(false);
-
-  const [useGlitch, setUseGlitch] =
-    useState(false);
-
-  const [useChromatic, setUseChromatic] =
-    useState(false);
-
-  const [useNoise, setUseNoise] =
-    useState(false);
-
-  const [useScanlines, setUseScanlines] =
-    useState(false);
-
-  // GLITCH
-
+  const [useGlitch, setUseGlitch] = useState(false);
   const [glitch, setGlitch] = useState(0);
-
-  const [glitchChaos, setGlitchChaos] =
-    useState(0);
-
-  const [glitchWidth, setGlitchWidth] =
-    useState(100);
-
+  const [glitchChaos, setGlitchChaos] = useState(0);
+  const [glitchWidth, setGlitchWidth] = useState(100);
   const [glitchOverrideDither, setGlitchOverrideDither] =
     useState(false);
+  const [edgeGlitchOnly, setEdgeGlitchOnly] = useState(true);
 
-  const [edgeGlitchOnly, setEdgeGlitchOnly] =
+  const [useChromatic, setUseChromatic] = useState(false);
+  const [chromaticOffset, setChromaticOffset] = useState(3);
+
+  const [useAscii, setUseAscii] = useState(false);
+  const [asciiCellSize, setAsciiCellSize] = useState(12);
+  const [asciiOpacity, setAsciiOpacity] = useState(0.5);
+  const [asciiMode, setAsciiMode] =
+    useState<'overlay' | 'replace'>('overlay');
+  const [asciiColor, setAsciiColor] = useState('#00ff99');
+
+  const [usePatternDither, setUsePatternDither] =
+    useState(false);
+  const [patternDitherShape, setPatternDitherShape] =
+    useState<PatternDitherShape>('dot');
+  const [patternDitherScale, setPatternDitherScale] =
+    useState(12);
+  const [patternDitherDensity, setPatternDitherDensity] =
+    useState(100);
+  const [patternDitherOpacity, setPatternDitherOpacity] =
+    useState(0.9);
+  const [patternDitherColor, setPatternDitherColor] =
+    useState('#00ff99');
+  const [
+    patternDitherBackgroundColor,
+    setPatternDitherBackgroundColor
+  ] = useState('#050505');
+  const [patternDitherInvert, setPatternDitherInvert] =
+    useState(false);
+  const [
+    patternDitherReplaceImage,
+    setPatternDitherReplaceImage
+  ] = useState(false);
+
+  const [useDataOverlay, setUseDataOverlay] =
+    useState(false);
+  const [dataOverlayMode, setDataOverlayMode] =
+    useState<DataOverlayMode>('random-codes');
+  const [dataOverlayDensity, setDataOverlayDensity] =
+    useState(18);
+  const [dataOverlayFontSize, setDataOverlayFontSize] =
+    useState(11);
+  const [dataOverlayOpacity, setDataOverlayOpacity] =
+    useState(0.45);
+  const [dataOverlayColor, setDataOverlayColor] =
+    useState('#00ff99');
+  const [dataOverlayCustomText, setDataOverlayCustomText] =
+    useState('SIGNAL UNSTABLE');
+
+  const [useHudFrame, setUseHudFrame] = useState(false);
+  const [hudFrameStyle, setHudFrameStyle] =
+    useState<HudFrameStyle>('scan-frame');
+  const [hudFrameOpacity, setHudFrameOpacity] =
+    useState(0.75);
+  const [hudFrameColor, setHudFrameColor] =
+    useState('#00ff99');
+  const [hudFrameShowGrid, setHudFrameShowGrid] =
     useState(true);
-
-  // CHROMATIC
-
-  const [chromaticOffset, setChromaticOffset] =
+  const [hudFrameShowLabels, setHudFrameShowLabels] =
+    useState(true);
+  const [
+    hudFrameShowCornerMarks,
+    setHudFrameShowCornerMarks
+  ] = useState(true);
+  const [hudFrameSafeArea, setHudFrameSafeArea] =
     useState(3);
 
-  // NOISE
+  const [useSignalWaves, setUseSignalWaves] =
+    useState(false);
+  const [signalWavesMode, setSignalWavesMode] =
+    useState<SignalWavesMode>('horizontal');
+  const [signalWavesFrequency, setSignalWavesFrequency] =
+    useState(12);
+  const [signalWavesAmplitude, setSignalWavesAmplitude] =
+    useState(26);
+  const [signalWavesDensity, setSignalWavesDensity] =
+    useState(18);
+  const [signalWavesOpacity, setSignalWavesOpacity] =
+    useState(0.65);
+  const [signalWavesColor, setSignalWavesColor] =
+    useState('#00ff99');
+  const [
+    signalWavesBackgroundColor,
+    setSignalWavesBackgroundColor
+  ] = useState('#050505');
+  const [
+    signalWavesReplaceImage,
+    setSignalWavesReplaceImage
+  ] = useState(false);
+  const [
+    signalWavesReactToImage,
+    setSignalWavesReactToImage
+  ] = useState(true);
 
-  const [noiseAmount, setNoiseAmount] =
-    useState(15);
+  const [useNoise, setUseNoise] = useState(false);
+  const [noiseAmount, setNoiseAmount] = useState(15);
 
-  // SCANLINES
-
+  const [useScanlines, setUseScanlines] = useState(false);
   const [scanlineIntensity, setScanlineIntensity] =
     useState(0.2);
 
-  // ORIGINAL
+  const sectionStyle = useMemo(
+    () => ({
+      marginTop: 14,
+      padding: 12,
+      background: '#090909',
+      border: '1px solid #1c1c1c',
+      borderRadius: 0
+    }),
+    []
+  );
 
-  const [showOriginal, setShowOriginal] =
-    useState(false);
+  const sliderLabelStyle = useMemo(
+    () => ({
+      marginTop: 9,
+      fontSize: 11,
+      letterSpacing: 2,
+      color: '#7c7c7c'
+    }),
+    []
+  );
 
-  const [glitchStrips, setGlitchStrips] =
-    useState<GlitchStrip[]>(
-      Array(30)
-        .fill(null)
-        .map(() => ({
-          active: true,
-          widthPct: 1,
-          leftPct: 0
-        }))
-    );
-    const [usePsx, setUsePsx] = useState(false);
-    const [psxResolutionScale, setPsxResolutionScale] = useState(4);
-    const [psxColorLevels, setPsxColorLevels] = useState(8);
-    const [psxWarpAmount, setPsxWarpAmount] = useState(2);
-    const [psxJitterAmount, setPsxJitterAmount] = useState(2);
-    const [psxDitherStrength, setPsxDitherStrength] = useState(0.45);
+  const buttonStyle = useMemo(
+    () => ({
+      background: '#07140d',
+      color: '#00ff99',
+      border: '1px solid #164d34',
+      padding: 10,
+      cursor: 'pointer',
+      fontFamily: "'Datatype', monospace",
+      borderRadius: 0
+    }),
+    []
+  );
 
-    const [psxBlockSize, setPsxBlockSize] =
-      useState(12);
+  const activeButtonStyle = useMemo(
+    () => ({
+      background: '#00ff99',
+      color: '#050505',
+      border: '1px solid #00ff99',
+      padding: 10,
+      cursor: 'pointer',
+      fontFamily: "'Datatype', monospace",
+      borderRadius: 0,
+      fontWeight: 700
+    }),
+    []
+  );
 
-    const [psxCompositeBlur, setPsxCompositeBlur] =
-      useState(0.8);
+  const imageSizeInfo = useMemo(() => {
+    if (!originalImage) return null;
 
-    const [psxChromaBleed, setPsxChromaBleed] =
-      useState(1);
-      
+    const scale = exportDpi / 72;
+
+    return {
+      sourceWidth: originalImage.width,
+      sourceHeight: originalImage.height,
+      exportWidth: Math.round(originalImage.width * scale),
+      exportHeight: Math.round(originalImage.height * scale)
+    };
+  }, [originalImage, exportDpi]);
+
   const markAsCustom = useCallback(() => {
-    setSelectedPresetName('');
+    setSelectedPresetName('CUSTOM');
   }, []);
+
+  const createEffectsSnapshot =
+    useCallback((): EffectsSnapshot => {
+      return {
+        selectedPresetName,
+
+        usePixelation,
+        pixelSize,
+
+        usePsx,
+        psxResolutionScale,
+        psxColorLevels,
+        psxWarpAmount,
+        psxJitterAmount,
+        psxDitherStrength,
+        psxBlockSize,
+        psxCompositeBlur,
+        psxChromaBleed,
+
+        usePixelSort,
+        pixelSortDirection,
+        pixelSortMode,
+        pixelSortThreshold,
+        pixelSortAmount,
+
+        usePalette,
+        colorStart,
+        colorEnd,
+        steps,
+        swapPaletteColors,
+
+        useDither,
+        ditherMode,
+        threshold,
+
+        useGlitch,
+        glitch,
+        glitchChaos,
+        glitchWidth,
+        glitchOverrideDither,
+        edgeGlitchOnly,
+
+        useChromatic,
+        chromaticOffset,
+
+        useAscii,
+        asciiCellSize,
+        asciiOpacity,
+        asciiMode,
+        asciiColor,
+
+        usePatternDither,
+        patternDitherShape,
+        patternDitherScale,
+        patternDitherDensity,
+        patternDitherOpacity,
+        patternDitherColor,
+        patternDitherBackgroundColor,
+        patternDitherInvert,
+        patternDitherReplaceImage,
+
+        useDataOverlay,
+        dataOverlayMode,
+        dataOverlayDensity,
+        dataOverlayFontSize,
+        dataOverlayOpacity,
+        dataOverlayColor,
+        dataOverlayCustomText,
+
+        useHudFrame,
+        hudFrameStyle,
+        hudFrameOpacity,
+        hudFrameColor,
+        hudFrameShowGrid,
+        hudFrameShowLabels,
+        hudFrameShowCornerMarks,
+        hudFrameSafeArea,
+
+        useSignalWaves,
+        signalWavesMode,
+        signalWavesFrequency,
+        signalWavesAmplitude,
+        signalWavesDensity,
+        signalWavesOpacity,
+        signalWavesColor,
+        signalWavesBackgroundColor,
+        signalWavesReplaceImage,
+        signalWavesReactToImage,
+
+        useNoise,
+        noiseAmount,
+
+        useScanlines,
+        scanlineIntensity
+      };
+    }, [
+      selectedPresetName,
+
+      usePixelation,
+      pixelSize,
+
+      usePsx,
+      psxResolutionScale,
+      psxColorLevels,
+      psxWarpAmount,
+      psxJitterAmount,
+      psxDitherStrength,
+      psxBlockSize,
+      psxCompositeBlur,
+      psxChromaBleed,
+
+      usePixelSort,
+      pixelSortDirection,
+      pixelSortMode,
+      pixelSortThreshold,
+      pixelSortAmount,
+
+      usePalette,
+      colorStart,
+      colorEnd,
+      steps,
+      swapPaletteColors,
+
+      useDither,
+      ditherMode,
+      threshold,
+
+      useGlitch,
+      glitch,
+      glitchChaos,
+      glitchWidth,
+      glitchOverrideDither,
+      edgeGlitchOnly,
+
+      useChromatic,
+      chromaticOffset,
+
+      useAscii,
+      asciiCellSize,
+      asciiOpacity,
+      asciiMode,
+      asciiColor,
+
+      usePatternDither,
+      patternDitherShape,
+      patternDitherScale,
+      patternDitherDensity,
+      patternDitherOpacity,
+      patternDitherColor,
+      patternDitherBackgroundColor,
+      patternDitherInvert,
+      patternDitherReplaceImage,
+
+      useDataOverlay,
+      dataOverlayMode,
+      dataOverlayDensity,
+      dataOverlayFontSize,
+      dataOverlayOpacity,
+      dataOverlayColor,
+      dataOverlayCustomText,
+
+      useHudFrame,
+      hudFrameStyle,
+      hudFrameOpacity,
+      hudFrameColor,
+      hudFrameShowGrid,
+      hudFrameShowLabels,
+      hudFrameShowCornerMarks,
+      hudFrameSafeArea,
+
+      useSignalWaves,
+      signalWavesMode,
+      signalWavesFrequency,
+      signalWavesAmplitude,
+      signalWavesDensity,
+      signalWavesOpacity,
+      signalWavesColor,
+      signalWavesBackgroundColor,
+      signalWavesReplaceImage,
+      signalWavesReactToImage,
+
+      useNoise,
+      noiseAmount,
+
+      useScanlines,
+      scanlineIntensity
+    ]);
+
+  const restoreEffectsSnapshot = useCallback(
+    (snapshot: EffectsSnapshot) => {
+      setSelectedPresetName(snapshot.selectedPresetName);
+
+      setUsePixelation(snapshot.usePixelation);
+      setPixelSize(snapshot.pixelSize);
+
+      setUsePsx(snapshot.usePsx);
+      setPsxResolutionScale(snapshot.psxResolutionScale);
+      setPsxColorLevels(snapshot.psxColorLevels);
+      setPsxWarpAmount(snapshot.psxWarpAmount);
+      setPsxJitterAmount(snapshot.psxJitterAmount);
+      setPsxDitherStrength(snapshot.psxDitherStrength);
+      setPsxBlockSize(snapshot.psxBlockSize);
+      setPsxCompositeBlur(snapshot.psxCompositeBlur);
+      setPsxChromaBleed(snapshot.psxChromaBleed);
+
+      setUsePixelSort(snapshot.usePixelSort);
+      setPixelSortDirection(snapshot.pixelSortDirection);
+      setPixelSortMode(snapshot.pixelSortMode);
+      setPixelSortThreshold(snapshot.pixelSortThreshold);
+      setPixelSortAmount(snapshot.pixelSortAmount);
+
+      setUsePalette(snapshot.usePalette);
+      setColorStart(snapshot.colorStart);
+      setColorEnd(snapshot.colorEnd);
+      setSteps(snapshot.steps);
+      setSwapPaletteColors(snapshot.swapPaletteColors);
+
+      setUseDither(snapshot.useDither);
+      setDitherMode(snapshot.ditherMode);
+      setThreshold(snapshot.threshold);
+
+      setUseGlitch(snapshot.useGlitch);
+      setGlitch(snapshot.glitch);
+      setGlitchChaos(snapshot.glitchChaos);
+      setGlitchWidth(snapshot.glitchWidth);
+      setGlitchOverrideDither(snapshot.glitchOverrideDither);
+      setEdgeGlitchOnly(snapshot.edgeGlitchOnly);
+
+      setUseChromatic(snapshot.useChromatic);
+      setChromaticOffset(snapshot.chromaticOffset);
+
+      setUseAscii(snapshot.useAscii);
+      setAsciiCellSize(snapshot.asciiCellSize);
+      setAsciiOpacity(snapshot.asciiOpacity);
+      setAsciiMode(snapshot.asciiMode);
+      setAsciiColor(snapshot.asciiColor);
+
+      setUsePatternDither(snapshot.usePatternDither);
+      setPatternDitherShape(snapshot.patternDitherShape);
+      setPatternDitherScale(snapshot.patternDitherScale);
+      setPatternDitherDensity(snapshot.patternDitherDensity);
+      setPatternDitherOpacity(snapshot.patternDitherOpacity);
+      setPatternDitherColor(snapshot.patternDitherColor);
+      setPatternDitherBackgroundColor(
+        snapshot.patternDitherBackgroundColor
+      );
+      setPatternDitherInvert(snapshot.patternDitherInvert);
+      setPatternDitherReplaceImage(
+        snapshot.patternDitherReplaceImage
+      );
+
+      setUseDataOverlay(snapshot.useDataOverlay);
+      setDataOverlayMode(snapshot.dataOverlayMode);
+      setDataOverlayDensity(snapshot.dataOverlayDensity);
+      setDataOverlayFontSize(snapshot.dataOverlayFontSize);
+      setDataOverlayOpacity(snapshot.dataOverlayOpacity);
+      setDataOverlayColor(snapshot.dataOverlayColor);
+      setDataOverlayCustomText(snapshot.dataOverlayCustomText);
+
+      setUseHudFrame(snapshot.useHudFrame);
+      setHudFrameStyle(snapshot.hudFrameStyle);
+      setHudFrameOpacity(snapshot.hudFrameOpacity);
+      setHudFrameColor(snapshot.hudFrameColor);
+      setHudFrameShowGrid(snapshot.hudFrameShowGrid);
+      setHudFrameShowLabels(snapshot.hudFrameShowLabels);
+      setHudFrameShowCornerMarks(
+        snapshot.hudFrameShowCornerMarks
+      );
+      setHudFrameSafeArea(snapshot.hudFrameSafeArea);
+
+      setUseSignalWaves(snapshot.useSignalWaves);
+      setSignalWavesMode(snapshot.signalWavesMode);
+      setSignalWavesFrequency(snapshot.signalWavesFrequency);
+      setSignalWavesAmplitude(snapshot.signalWavesAmplitude);
+      setSignalWavesDensity(snapshot.signalWavesDensity);
+      setSignalWavesOpacity(snapshot.signalWavesOpacity);
+      setSignalWavesColor(snapshot.signalWavesColor);
+      setSignalWavesBackgroundColor(
+        snapshot.signalWavesBackgroundColor
+      );
+      setSignalWavesReplaceImage(
+        snapshot.signalWavesReplaceImage
+      );
+      setSignalWavesReactToImage(
+        snapshot.signalWavesReactToImage
+      );
+
+      setUseNoise(snapshot.useNoise);
+      setNoiseAmount(snapshot.noiseAmount);
+
+      setUseScanlines(snapshot.useScanlines);
+      setScanlineIntensity(snapshot.scanlineIntensity);
+    },
+    []
+  );
+
+  const clearEffects = useCallback(() => {
+    setLastEffectsSnapshot(createEffectsSnapshot());
+
+    setSelectedPresetName('CUSTOM');
+
+    setUsePixelation(false);
+    setPixelSize(4);
+
+    setUsePsx(false);
+    setPsxResolutionScale(4);
+    setPsxColorLevels(8);
+    setPsxWarpAmount(2);
+    setPsxJitterAmount(2);
+    setPsxDitherStrength(0.45);
+    setPsxBlockSize(12);
+    setPsxCompositeBlur(0.8);
+    setPsxChromaBleed(1);
+
+    setUsePixelSort(false);
+    setPixelSortDirection('horizontal');
+    setPixelSortMode('bright');
+    setPixelSortThreshold(160);
+    setPixelSortAmount(0.75);
+
+    setUsePalette(false);
+    setColorStart('#000000');
+    setColorEnd('#00ff00');
+    setSteps(4);
+    setSwapPaletteColors(false);
+
+    setUseDither(false);
+    setDitherMode('floyd-steinberg');
+    setThreshold(255);
+
+    setUseGlitch(false);
+    setGlitch(0);
+    setGlitchChaos(0);
+    setGlitchWidth(100);
+    setGlitchOverrideDither(false);
+    setEdgeGlitchOnly(true);
+
+    setUseChromatic(false);
+    setChromaticOffset(3);
+
+    setUseAscii(false);
+    setAsciiCellSize(12);
+    setAsciiOpacity(0.5);
+    setAsciiMode('overlay');
+    setAsciiColor('#00ff99');
+
+    setUsePatternDither(false);
+    setPatternDitherShape('dot');
+    setPatternDitherScale(12);
+    setPatternDitherDensity(100);
+    setPatternDitherOpacity(0.9);
+    setPatternDitherColor('#00ff99');
+    setPatternDitherBackgroundColor('#050505');
+    setPatternDitherInvert(false);
+    setPatternDitherReplaceImage(false);
+
+    setUseDataOverlay(false);
+    setDataOverlayMode('random-codes');
+    setDataOverlayDensity(18);
+    setDataOverlayFontSize(11);
+    setDataOverlayOpacity(0.45);
+    setDataOverlayColor('#00ff99');
+    setDataOverlayCustomText('SIGNAL UNSTABLE');
+
+    setUseHudFrame(false);
+    setHudFrameStyle('scan-frame');
+    setHudFrameOpacity(0.75);
+    setHudFrameColor('#00ff99');
+    setHudFrameShowGrid(true);
+    setHudFrameShowLabels(true);
+    setHudFrameShowCornerMarks(true);
+    setHudFrameSafeArea(3);
+
+    setUseSignalWaves(false);
+    setSignalWavesMode('horizontal');
+    setSignalWavesFrequency(12);
+    setSignalWavesAmplitude(26);
+    setSignalWavesDensity(18);
+    setSignalWavesOpacity(0.65);
+    setSignalWavesColor('#00ff99');
+    setSignalWavesBackgroundColor('#050505');
+    setSignalWavesReplaceImage(false);
+    setSignalWavesReactToImage(true);
+
+    setUseNoise(false);
+    setNoiseAmount(15);
+
+    setUseScanlines(false);
+    setScanlineIntensity(0.2);
+  }, [createEffectsSnapshot]);
+
+  const fockGoBack = useCallback(() => {
+    if (!lastEffectsSnapshot) return;
+
+    restoreEffectsSnapshot(lastEffectsSnapshot);
+    setLastEffectsSnapshot(null);
+  }, [lastEffectsSnapshot, restoreEffectsSnapshot]);
 
   const calcStrips = useCallback(
     (
       chaosLevel: number,
-      widthSetting: number
+      widthSetting: number,
+      random: RandomGenerator
     ): GlitchStrip[] => {
       return Array.from({ length: 30 }, () => {
         const active =
           chaosLevel === 0
             ? true
-            : Math.random() * 100 < chaosLevel;
+            : random() * 100 < chaosLevel;
 
-        const wPct =
+        const widthPct =
           widthSetting === 100
             ? 1
-            : 0.3 +
-              Math.random() *
-                (widthSetting / 100 - 0.1);
+            : 0.3 + random() * (widthSetting / 100 - 0.1);
 
-        const maxLeft = 1 - wPct;
+        const maxLeft = 1 - widthPct;
 
-        const lPct =
-          widthSetting === 100
-            ? 0
-            : Math.random() * maxLeft;
+        const leftPct =
+          widthSetting === 100 ? 0 : random() * maxLeft;
 
         return {
           active,
-          widthPct: Math.min(1, Math.max(0.1, wPct)),
-          leftPct: lPct
+          widthPct: Math.min(1, Math.max(0.1, widthPct)),
+          leftPct
         };
       });
     },
     []
   );
 
-  const applyPreset = useCallback(
-    (preset: EffectPreset) => {
-      setUsePixelation(preset.usePixelation);
-      setPixelSize(preset.pixelSize);
-
-      setUsePsx(preset.usePsx);
-      setPsxResolutionScale(preset.psxResolutionScale);
-      setPsxColorLevels(preset.psxColorLevels);
-      setPsxWarpAmount(preset.psxWarpAmount);
-      setPsxJitterAmount(preset.psxJitterAmount);
-      setPsxDitherStrength(preset.psxDitherStrength);
-      setPsxBlockSize(preset.psxBlockSize);
-      setPsxCompositeBlur(preset.psxCompositeBlur);
-      setPsxChromaBleed(preset.psxChromaBleed);
-
-      setUsePalette(preset.usePalette);
-      setColorStart(preset.colorStart);
-      setColorEnd(preset.colorEnd);
-      setSteps(preset.steps);
-      setSwapPaletteColors(preset.swapPaletteColors);
-
-      setUseDither(preset.useDither);
-      setThreshold(preset.threshold);
-
-      setUseGlitch(preset.useGlitch);
-      setGlitch(preset.glitch);
-      setGlitchChaos(preset.glitchChaos);
-      setGlitchWidth(preset.glitchWidth);
-      setGlitchOverrideDither(preset.glitchOverrideDither);
-      setEdgeGlitchOnly(preset.edgeGlitchOnly);
-
-      setGlitchStrips(
-        calcStrips(
-          preset.glitchChaos,
-          preset.glitchWidth
-        )
-      );
-
-      setUseChromatic(preset.useChromatic);
-      setChromaticOffset(preset.chromaticOffset);
-
-      setUseAscii(preset.useAscii);
-      setAsciiCellSize(preset.asciiCellSize);
-      setAsciiOpacity(preset.asciiOpacity);
-      setAsciiMode(preset.asciiMode);
-      setAsciiColor(preset.asciiColor);
-
-      setUseNoise(preset.useNoise);
-      setNoiseAmount(preset.noiseAmount);
-
-      setUseScanlines(preset.useScanlines);
-      setScanlineIntensity(preset.scanlineIntensity);
-    },
-    [calcStrips]
-  );
-
   const saveImage = useCallback(() => {
-    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+
+    if (!canvas) return;
+
+    const scale = exportDpi / 72;
+
+    const exportCanvas = document.createElement('canvas');
+    const exportCtx = exportCanvas.getContext('2d');
+
+    if (!exportCtx) return;
+
+    exportCanvas.width = Math.round(canvas.width * scale);
+    exportCanvas.height = Math.round(canvas.height * scale);
+
+    exportCtx.imageSmoothingEnabled = false;
+
+    if (exportFormat === 'jpeg') {
+      exportCtx.fillStyle = '#050505';
+      exportCtx.fillRect(
+        0,
+        0,
+        exportCanvas.width,
+        exportCanvas.height
+      );
+    }
+
+    exportCtx.drawImage(
+      canvas,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+      0,
+      0,
+      exportCanvas.width,
+      exportCanvas.height
+    );
+
+    const mimeType =
+      exportFormat === 'png' ? 'image/png' : 'image/jpeg';
+
+    const extension = exportFormat === 'png' ? 'png' : 'jpg';
+
+    const quality =
+      exportFormat === 'jpeg' ? 0.95 : undefined;
 
     const link = document.createElement('a');
 
-    link.download = `signal-decay-${Date.now()}.png`;
-
-    link.href = canvasRef.current.toDataURL(
-      'image/png'
-    );
+    link.download = `entropy-engine-${exportDpi}dpi-${Date.now()}.${extension}`;
+    link.href =
+      quality === undefined
+        ? exportCanvas.toDataURL(mimeType)
+        : exportCanvas.toDataURL(mimeType, quality);
 
     link.click();
-  }, []);
+  }, [exportFormat, exportDpi]);
+
+  const applyPreset = useCallback((preset: EffectPreset) => {
+  setSelectedPresetName(preset.name);
+
+  setUsePixelation(preset.usePixelation);
+  setPixelSize(preset.pixelSize);
+
+  setUsePsx(preset.usePsx);
+  setPsxResolutionScale(preset.psxResolutionScale);
+  setPsxColorLevels(preset.psxColorLevels);
+  setPsxWarpAmount(preset.psxWarpAmount);
+  setPsxJitterAmount(preset.psxJitterAmount);
+  setPsxDitherStrength(preset.psxDitherStrength);
+  setPsxBlockSize(preset.psxBlockSize);
+  setPsxCompositeBlur(preset.psxCompositeBlur);
+  setPsxChromaBleed(preset.psxChromaBleed);
+
+  setUsePixelSort(preset.usePixelSort);
+  setPixelSortDirection(preset.pixelSortDirection);
+  setPixelSortMode(preset.pixelSortMode);
+  setPixelSortThreshold(preset.pixelSortThreshold);
+  setPixelSortAmount(preset.pixelSortAmount);
+
+  setUsePalette(preset.usePalette);
+  setColorStart(preset.colorStart);
+  setColorEnd(preset.colorEnd);
+  setSteps(preset.steps);
+  setSwapPaletteColors(preset.swapPaletteColors);
+
+  setUseDither(preset.useDither);
+  setDitherMode(preset.ditherMode);
+  setThreshold(preset.threshold);
+
+  setUseGlitch(preset.useGlitch);
+  setGlitch(preset.glitch);
+  setGlitchChaos(preset.glitchChaos);
+  setGlitchWidth(preset.glitchWidth);
+  setGlitchOverrideDither(preset.glitchOverrideDither);
+  setEdgeGlitchOnly(preset.edgeGlitchOnly);
+
+  setUseChromatic(preset.useChromatic);
+  setChromaticOffset(preset.chromaticOffset);
+
+  setUseAscii(preset.useAscii);
+  setAsciiCellSize(preset.asciiCellSize);
+  setAsciiOpacity(preset.asciiOpacity);
+  setAsciiMode(preset.asciiMode);
+  setAsciiColor(preset.asciiColor);
+
+  setUsePatternDither(preset.usePatternDither);
+  setPatternDitherShape(preset.patternDitherShape);
+  setPatternDitherScale(preset.patternDitherScale);
+  setPatternDitherDensity(preset.patternDitherDensity);
+  setPatternDitherOpacity(preset.patternDitherOpacity);
+  setPatternDitherColor(preset.patternDitherColor);
+  setPatternDitherBackgroundColor(
+    preset.patternDitherBackgroundColor
+  );
+  setPatternDitherInvert(preset.patternDitherInvert);
+  setPatternDitherReplaceImage(
+    preset.patternDitherReplaceImage
+  );
+
+  setUseSignalWaves(preset.useSignalWaves);
+  setSignalWavesMode(preset.signalWavesMode);
+  setSignalWavesFrequency(preset.signalWavesFrequency);
+  setSignalWavesAmplitude(preset.signalWavesAmplitude);
+  setSignalWavesDensity(preset.signalWavesDensity);
+  setSignalWavesOpacity(preset.signalWavesOpacity);
+  setSignalWavesColor(preset.signalWavesColor);
+  setSignalWavesBackgroundColor(
+    preset.signalWavesBackgroundColor
+  );
+  setSignalWavesReplaceImage(
+    preset.signalWavesReplaceImage
+  );
+  setSignalWavesReactToImage(
+    preset.signalWavesReactToImage
+  );
+
+  setUseDataOverlay(preset.useDataOverlay);
+  setDataOverlayMode(preset.dataOverlayMode);
+  setDataOverlayDensity(preset.dataOverlayDensity);
+  setDataOverlayFontSize(preset.dataOverlayFontSize);
+  setDataOverlayOpacity(preset.dataOverlayOpacity);
+  setDataOverlayColor(preset.dataOverlayColor);
+  setDataOverlayCustomText(preset.dataOverlayCustomText);
+
+  setUseHudFrame(preset.useHudFrame);
+  setHudFrameStyle(preset.hudFrameStyle);
+  setHudFrameOpacity(preset.hudFrameOpacity);
+  setHudFrameColor(preset.hudFrameColor);
+  setHudFrameShowGrid(preset.hudFrameShowGrid);
+  setHudFrameShowLabels(preset.hudFrameShowLabels);
+  setHudFrameShowCornerMarks(
+    preset.hudFrameShowCornerMarks
+  );
+  setHudFrameSafeArea(preset.hudFrameSafeArea);
+
+  setUseNoise(preset.useNoise);
+  setNoiseAmount(preset.noiseAmount);
+
+  setUseScanlines(preset.useScanlines);
+  setScanlineIntensity(preset.scanlineIntensity);
+
+  setLastEffectsSnapshot(null);
+}, []);
 
   const processImage = useCallback(() => {
-    if (!originalImage || !canvasRef.current) return;
-
     const canvas = canvasRef.current;
+
+    if (!canvas || !originalImage) return;
+
     const ctx = canvas.getContext('2d');
 
     if (!ctx) return;
 
+    const random = createRandom(seed);
+
     const width = originalImage.width;
     const height = originalImage.height;
 
+    canvas.width = width;
+    canvas.height = height;
+
     ctx.imageSmoothingEnabled = false;
 
-    // TRUE ORIGINAL
-
     ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(originalImage, 0, 0);
+    ctx.drawImage(originalImage, 0, 0, width, height);
 
     if (showOriginal) return;
 
-    // PIXELATION
-
     if (usePixelation && pixelSize > 1) {
-      const smallWidth = Math.max(
-        1,
-        Math.floor(width / pixelSize)
-      );
-
-      const smallHeight = Math.max(
-        1,
-        Math.floor(height / pixelSize)
-      );
+      const smallWidth = Math.max(1, Math.floor(width / pixelSize));
+      const smallHeight = Math.max(1, Math.floor(height / pixelSize));
 
       if (!tempCanvasRef.current) {
-        tempCanvasRef.current =
-          document.createElement('canvas');
+        tempCanvasRef.current = document.createElement('canvas');
       }
 
       const tempCanvas = tempCanvasRef.current;
-
-      tempCanvas.width = smallWidth;
-      tempCanvas.height = smallHeight;
-
       const tempCtx = tempCanvas.getContext('2d');
 
-      if (!tempCtx) return;
+      if (tempCtx) {
+        tempCanvas.width = smallWidth;
+        tempCanvas.height = smallHeight;
 
-      tempCtx.imageSmoothingEnabled = false;
+        tempCtx.imageSmoothingEnabled = false;
+        ctx.imageSmoothingEnabled = false;
 
-      tempCtx.clearRect(
-        0,
-        0,
-        smallWidth,
-        smallHeight
-      );
+        tempCtx.drawImage(canvas, 0, 0, smallWidth, smallHeight);
 
-      tempCtx.drawImage(
-        originalImage,
-        0,
-        0,
-        smallWidth,
-        smallHeight
-      );
+        ctx.clearRect(0, 0, width, height);
 
-      ctx.clearRect(0, 0, width, height);
-
-      ctx.drawImage(
-        tempCanvas,
-        0,
-        0,
-        smallWidth,
-        smallHeight,
-        0,
-        0,
-        width,
-        height
-      );
+        ctx.drawImage(
+          tempCanvas,
+          0,
+          0,
+          smallWidth,
+          smallHeight,
+          0,
+          0,
+          width,
+          height
+        );
+      }
     }
 
+    if (usePsx) {
+      applyPsx(ctx, width, height, {
+        resolutionScale: psxResolutionScale,
+        colorLevels: psxColorLevels,
+        warpAmount: psxWarpAmount,
+        jitterAmount: psxJitterAmount,
+        ditherStrength: psxDitherStrength,
+        blockSize: psxBlockSize,
+        compositeBlur: psxCompositeBlur,
+        chromaBleed: psxChromaBleed
+      });
+    }
 
-    // PSX LOOK
+    if (usePixelSort) {
+      applyPixelSort(ctx, width, height, {
+        direction: pixelSortDirection,
+        mode: pixelSortMode,
+        threshold: pixelSortThreshold,
+        amount: pixelSortAmount
+      });
+    }
 
-if (usePsx) {
-  applyPsx(ctx, width, height, {
-    resolutionScale: psxResolutionScale,
-    colorLevels: psxColorLevels,
-    warpAmount: psxWarpAmount,
-    jitterAmount: psxJitterAmount,
-    ditherStrength: psxDitherStrength,
-    blockSize: psxBlockSize,
-    compositeBlur: psxCompositeBlur,
-    chromaBleed: psxChromaBleed
-  });
-}
-
-    // SAVE PRE-PALETTE IMAGE FOR GLITCH OVERRIDE
-
-    const prePaletteImageData = ctx.getImageData(
-      0,
-      0,
-      width,
-      height
-    );
-
-    const prePaletteCopy = new Uint8ClampedArray(
-      prePaletteImageData.data
-    );
-    
-    
-
-    // PALETTE
+    const prePaletteCopy = ctx.getImageData(0, 0, width, height);
 
     const palette = usePalette
       ? generatePalette(
@@ -438,15 +1158,8 @@ if (usePsx) {
         ];
 
     if (usePalette && !useDither) {
-      applyPaletteByBrightness(
-        ctx,
-        width,
-        height,
-        palette
-      );
+      applyPaletteByBrightness(ctx, width, height, palette);
     }
-
-    // DITHER
 
     if (useDither) {
       applyDithering(
@@ -454,145 +1167,103 @@ if (usePsx) {
         width,
         height,
         threshold,
-        palette
+        palette,
+        ditherMode
       );
     }
 
-    // GLITCH
+    const processedCopy = ctx.getImageData(0, 0, width, height);
 
     if (useGlitch && glitch > 0) {
-      const imageData = ctx.getImageData(
-        0,
-        0,
-        width,
-        height
-      );
+      const target = ctx.getImageData(0, 0, width, height);
 
-      const data = imageData.data;
-
-      const processedCopy = new Uint8ClampedArray(data);
-
-      const glitchSource = glitchOverrideDither
+      const source = glitchOverrideDither
         ? prePaletteCopy
         : processedCopy;
 
-      const shift = glitch * 4;
+      const strips = calcStrips(glitchChaos, glitchWidth, random);
 
-      const sliceCount = 30;
-      const sliceHeight = height / sliceCount;
+      const stripHeight = Math.max(
+        1,
+        Math.floor(height / strips.length)
+      );
 
-      const brightness = (
-        arr: Uint8ClampedArray,
-        i: number
-      ) =>
-        0.299 * arr[i] +
-        0.587 * arr[i + 1] +
-        0.114 * arr[i + 2];
+      for (let s = 0; s < strips.length; s++) {
+        const strip = strips[s];
 
-      const edgeSensitivity = 35;
+        if (!strip.active) continue;
 
-      for (let i = 0; i < data.length; i += 4) {
-        const x = (i / 4) % width;
-        const y = Math.floor(i / 4 / width);
+        const yStart = s * stripHeight;
+        const yEnd = Math.min(height, yStart + stripHeight);
 
-        const sliceIdx = Math.floor(
-          y / sliceHeight
-        );
+        const xStart = Math.floor(strip.leftPct * width);
+        const xWidth = Math.floor(strip.widthPct * width);
+        const xEnd = Math.min(width, xStart + xWidth);
 
-        const strip = glitchStrips[sliceIdx];
+        const shift = Math.round((random() - 0.5) * glitch * 8);
 
-        if (!strip || !strip.active) continue;
-
-        const startX = Math.floor(
-          strip.leftPct * width
-        );
-
-        const endX = Math.floor(
-          (strip.leftPct + strip.widthPct) *
-            width
-        );
-
-        if (x < startX || x > endX) continue;
-
-        // EDGE ONLY
-
-        if (edgeGlitchOnly) {
-          if (x < width - 1 && y < height - 1) {
-            const rightIdx =
-              (y * width + (x + 1)) * 4;
-
-            const bottomIdx =
-              ((y + 1) * width + x) * 4;
-
-            const diffX = Math.abs(
-              brightness(processedCopy, i) -
-                brightness(processedCopy, rightIdx)
+        for (let y = yStart; y < yEnd; y++) {
+          for (let x = xStart; x < xEnd; x++) {
+            const srcX = Math.max(
+              0,
+              Math.min(width - 1, x + shift)
             );
 
-            const diffY = Math.abs(
-              brightness(processedCopy, i) -
-                brightness(processedCopy, bottomIdx)
-            );
+            const targetIndex = (y * width + x) * 4;
+            const sourceIndex = (y * width + srcX) * 4;
 
-            const edgeStrength = diffX + diffY;
+            let shouldAffect = true;
 
-            if (edgeStrength < edgeSensitivity) {
-              continue;
+            if (edgeGlitchOnly) {
+              const currentBrightness = getBrightness(
+                processedCopy.data[targetIndex],
+                processedCopy.data[targetIndex + 1],
+                processedCopy.data[targetIndex + 2]
+              );
+
+              const compareX = Math.max(
+                0,
+                Math.min(width - 1, x + 1)
+              );
+
+              const compareIndex = (y * width + compareX) * 4;
+
+              const compareBrightness = getBrightness(
+                processedCopy.data[compareIndex],
+                processedCopy.data[compareIndex + 1],
+                processedCopy.data[compareIndex + 2]
+              );
+
+              shouldAffect =
+                Math.abs(currentBrightness - compareBrightness) > 18;
             }
+
+            if (!shouldAffect) continue;
+
+            target.data[targetIndex] = source.data[sourceIndex];
+
+            target.data[targetIndex + 1] = glitchOverrideDither
+              ? Math.round(
+                  (target.data[targetIndex + 1] +
+                    source.data[sourceIndex + 1]) /
+                    2
+                )
+              : source.data[sourceIndex + 1];
+
+            target.data[targetIndex + 2] =
+              source.data[sourceIndex + 2];
           }
-        }
-
-        const rIdx = i + shift;
-        const bIdx = i - shift;
-
-        if (rIdx < data.length) {
-          if (glitchOverrideDither) {
-            data[i] = glitchSource[rIdx];
-          } else {
-            const shiftedR = Math.max(
-              glitchSource[rIdx],
-              glitchSource[rIdx + 1],
-              glitchSource[rIdx + 2]
-            );
-
-            data[i] = shiftedR;
-          }
-        }
-
-        if (bIdx >= 0) {
-          if (glitchOverrideDither) {
-            data[i + 2] = glitchSource[bIdx + 2];
-          } else {
-            const shiftedB = Math.max(
-              glitchSource[bIdx],
-              glitchSource[bIdx + 1],
-              glitchSource[bIdx + 2]
-            );
-
-            data[i + 2] = shiftedB;
-          }
-        }
-
-        if (glitchOverrideDither) {
-          data[i + 1] = Math.round(
-            data[i + 1] * 0.45 +
-              glitchSource[i + 1] * 0.55
-          );
         }
       }
 
-      ctx.putImageData(imageData, 0, 0);
+      ctx.putImageData(target, 0, 0);
     }
 
-    // CHROMATIC
-
-    if (useChromatic) {
+    if (useChromatic && chromaticOffset > 0) {
       applyChromatic(ctx, width, height, {
         amount: chromaticOffset
       });
     }
-
-    // ASCII
 
     if (useAscii) {
       applyAscii(ctx, width, height, {
@@ -603,63 +1274,71 @@ if (usePsx) {
       });
     }
 
-    // NOISE
-
-    if (useNoise) {
-      applyNoise(
-        ctx,
-        width,
-        height,
-        noiseAmount
-      );
+    if (usePatternDither) {
+      applyPatternDither(ctx, width, height, {
+        shape: patternDitherShape,
+        scale: patternDitherScale,
+        density: patternDitherDensity,
+        opacity: patternDitherOpacity,
+        color: patternDitherColor,
+        backgroundColor: patternDitherBackgroundColor,
+        invert: patternDitherInvert,
+        replaceImage: patternDitherReplaceImage
+      });
     }
 
-    // SCANLINES
+    if (useSignalWaves) {
+      applySignalWaves(ctx, width, height, {
+        mode: signalWavesMode,
+        frequency: signalWavesFrequency,
+        amplitude: signalWavesAmplitude,
+        density: signalWavesDensity,
+        opacity: signalWavesOpacity,
+        color: signalWavesColor,
+        backgroundColor: signalWavesBackgroundColor,
+        replaceImage: signalWavesReplaceImage,
+        reactToImage: signalWavesReactToImage
+      });
+    }
 
-    if (useScanlines) {
-      applyScanlines(
-        ctx,
-        width,
-        height,
-        scanlineIntensity
-      );
+    if (useNoise && noiseAmount > 0) {
+      applyNoise(ctx, width, height, noiseAmount);
+    }
+
+    if (useScanlines && scanlineIntensity > 0) {
+      applyScanlines(ctx, width, height, scanlineIntensity);
+    }
+
+    if (useDataOverlay) {
+      applyDataOverlay(ctx, width, height, {
+        mode: dataOverlayMode,
+        density: dataOverlayDensity,
+        fontSize: dataOverlayFontSize,
+        opacity: dataOverlayOpacity,
+        color: dataOverlayColor,
+        customText: dataOverlayCustomText,
+        seed
+      });
+    }
+
+    if (useHudFrame) {
+      applyHudFrame(ctx, width, height, {
+        style: hudFrameStyle,
+        opacity: hudFrameOpacity,
+        color: hudFrameColor,
+        showGrid: hudFrameShowGrid,
+        showLabels: hudFrameShowLabels,
+        showCornerMarks: hudFrameShowCornerMarks,
+        safeArea: hudFrameSafeArea
+      });
     }
   }, [
     originalImage,
     showOriginal,
+    seed,
 
     usePixelation,
     pixelSize,
-
-    usePalette,
-    colorStart,
-    colorEnd,
-    steps,
-    swapPaletteColors,
-
-    useDither,
-    threshold,
-
-    useGlitch,
-    glitch,
-    glitchStrips,
-    glitchOverrideDither,
-    edgeGlitchOnly,
-
-    useChromatic,
-    chromaticOffset,
-
-    useAscii,
-    asciiCellSize,
-    asciiOpacity,
-    asciiMode,
-    asciiColor,
-
-    useNoise,
-    noiseAmount,
-
-    useScanlines,
-    scanlineIntensity,
 
     usePsx,
     psxResolutionScale,
@@ -670,37 +1349,107 @@ if (usePsx) {
     psxBlockSize,
     psxCompositeBlur,
     psxChromaBleed,
+
+    usePixelSort,
+    pixelSortDirection,
+    pixelSortMode,
+    pixelSortThreshold,
+    pixelSortAmount,
+
+    usePalette,
+    colorStart,
+    colorEnd,
+    steps,
+    swapPaletteColors,
+
+    useDither,
+    ditherMode,
+    threshold,
+
+    useGlitch,
+    glitch,
+    glitchChaos,
+    glitchWidth,
+    glitchOverrideDither,
+    edgeGlitchOnly,
+    calcStrips,
+
+    useChromatic,
+    chromaticOffset,
+
+    useAscii,
+    asciiCellSize,
+    asciiOpacity,
+    asciiMode,
+    asciiColor,
+
+    usePatternDither,
+    patternDitherShape,
+    patternDitherScale,
+    patternDitherDensity,
+    patternDitherOpacity,
+    patternDitherColor,
+    patternDitherBackgroundColor,
+    patternDitherInvert,
+    patternDitherReplaceImage,
+
+    useSignalWaves,
+    signalWavesMode,
+    signalWavesFrequency,
+    signalWavesAmplitude,
+    signalWavesDensity,
+    signalWavesOpacity,
+    signalWavesColor,
+    signalWavesBackgroundColor,
+    signalWavesReplaceImage,
+    signalWavesReactToImage,
+
+    useNoise,
+    noiseAmount,
+
+    useScanlines,
+    scanlineIntensity,
+
+    useDataOverlay,
+    dataOverlayMode,
+    dataOverlayDensity,
+    dataOverlayFontSize,
+    dataOverlayOpacity,
+    dataOverlayColor,
+    dataOverlayCustomText,
+
+    useHudFrame,
+    hudFrameStyle,
+    hudFrameOpacity,
+    hudFrameColor,
+    hudFrameShowGrid,
+    hudFrameShowLabels,
+    hudFrameShowCornerMarks,
+    hudFrameSafeArea
   ]);
 
-  useEffect(() => {
-    if (originalImage) {
-      processImage();
-    }
-  }, [originalImage, processImage]);
-
   const handleImageUpload = useCallback(
-    (
-      e: React.ChangeEvent<HTMLInputElement>
-    ) => {
-      const file = e.target.files?.[0];
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
 
       if (!file) return;
 
+      setSelectedFileName(file.name);
+
       const reader = new FileReader();
 
-      reader.onload = (ev) => {
-        const img = new Image();
+      reader.onload = () => {
+        const image = new Image();
 
-        img.onload = () => {
-          if (canvasRef.current) {
-            canvasRef.current.width = img.width;
-            canvasRef.current.height = img.height;
-
-            setOriginalImage(img);
-          }
+        image.onload = () => {
+          setOriginalImage(image);
+          setZoom(1);
+          setPan({ x: 0, y: 0 });
+          setShowOriginal(false);
+          setLastEffectsSnapshot(null);
         };
 
-        img.src = ev.target?.result as string;
+        image.src = reader.result as string;
       };
 
       reader.readAsDataURL(file);
@@ -708,1074 +1457,1804 @@ if (usePsx) {
     []
   );
 
-  const sectionStyle = useMemo(
-    () => ({
-      marginTop: '18px',
-      border: '1px solid #222',
-      borderRadius: '10px',
-      padding: '12px',
-      background: '#111'
-    }),
-    []
+  const handleWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      if (!originalImage) return;
+
+      event.preventDefault();
+
+      const delta = event.deltaY > 0 ? -0.1 : 0.1;
+
+      setZoom((currentZoom) => {
+        const nextZoom = currentZoom + delta;
+
+        return Math.max(
+          0.2,
+          Math.min(6, Number(nextZoom.toFixed(2)))
+        );
+      });
+    },
+    [originalImage]
   );
 
-  const sliderStyle = useMemo(
-    () => ({
-      width: '100%',
-      marginTop: '10px'
-    }),
-    []
+  const handleMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!originalImage || event.button !== 0) return;
+
+      setIsPanning(true);
+
+      dragStartRef.current = {
+        x: event.clientX,
+        y: event.clientY
+      };
+
+      panStartRef.current = {
+        x: pan.x,
+        y: pan.y
+      };
+    },
+    [originalImage, pan]
   );
 
-  const sliderLabelStyle = useMemo(
-    () => ({
-      fontSize: '12px',
-      color: '#666',
-      marginBottom: '4px',
-      marginTop: '12px',
-      letterSpacing: '1px'
-    }),
-    []
+  const handleMouseMove = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!isPanning) return;
+
+      const dx = event.clientX - dragStartRef.current.x;
+      const dy = event.clientY - dragStartRef.current.y;
+
+      setPan({
+        x: panStartRef.current.x + dx,
+        y: panStartRef.current.y + dy
+      });
+    },
+    [isPanning]
   );
+
+  const stopPanning = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  const changeSeed = useCallback((delta: number) => {
+    setSeed((prev) => prev + delta);
+  }, []);
+
+  useEffect(() => {
+    if (originalImage) {
+      processImage();
+    }
+  }, [originalImage, processImage]);
 
   return (
     <div
       style={{
+        width: '100vw',
+        height: '100vh',
         display: 'flex',
-        height: '100dvh',
-        overflow: 'hidden',
-        background:
-          'linear-gradient(to bottom, #050505, #0b0b0b)',
+        background: '#050505',
         color: '#00ff99',
-        fontFamily:
-          'Inter, Arial, sans-serif'
+        fontFamily: "'Datatype', monospace",
+        overflow: 'hidden'
       }}
     >
-      {/* CANVAS AREA */}
-
       <div
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={stopPanning}
+        onMouseLeave={stopPanning}
         style={{
           flex: 1,
+          height: '100vh',
+          overflow: 'hidden',
           display: 'flex',
-          justifyContent: 'center',
           alignItems: 'center',
-          overflow: 'auto',
+          justifyContent: 'center',
           position: 'relative',
-          padding: '30px'
+          background:
+            'radial-gradient(circle at center, #0b1510 0%, #050505 65%)',
+          cursor: originalImage
+            ? isPanning
+              ? 'grabbing'
+              : 'grab'
+            : 'default'
         }}
       >
         {originalImage && (
-          <div
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowOriginal((value) => !value);
+            }}
+            onMouseDown={(event) => {
+              event.stopPropagation();
+            }}
             style={{
+              ...buttonStyle,
               position: 'absolute',
-              top: 20,
-              right: 20,
-              display: 'flex',
-              gap: '10px',
-              zIndex: 10
+              top: 24,
+              right: 24,
+              zIndex: 10,
+              background: showOriginal ? '#00ff99' : '#07140d',
+              color: showOriginal ? '#050505' : '#00ff99'
             }}
           >
-            <button
-              onMouseDown={() =>
-                setShowOriginal(true)
-              }
-              onMouseUp={() =>
-                setShowOriginal(false)
-              }
-              onMouseLeave={() =>
-                setShowOriginal(false)
-              }
-              style={{
-                background: '#111',
-                border: '1px solid #00ff99',
-                color: '#00ff99',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              ORIGINAL
-            </button>
-
-            <button
-              onClick={saveImage}
-              style={{
-                background: '#00ff99',
-                border: 'none',
-                color: '#000',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              EXPORT PNG
-            </button>
-          </div>
+            {showOriginal ? 'SHOW EFFECTS' : 'ORIGINAL'}
+          </button>
         )}
 
-        <div
-          style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: 'center center'
-          }}
-        >
-          {!originalImage && (
-            <div
-              style={{
-                border: '1px dashed #333',
-                padding: '60px',
-                borderRadius: '12px',
-                color: '#666'
-              }}
-            >
-              Upload image
-            </div>
-          )}
-
+        {originalImage ? (
           <canvas
             ref={canvasRef}
             style={{
-              display: originalImage
-                ? 'block'
-                : 'none',
-              border: '1px solid #1f1f1f',
-              borderRadius: '12px',
-              boxShadow:
-                '0 0 60px rgba(0,255,120,0.08)',
-              maxWidth: '100%',
-              height: 'auto'
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: 'center',
+              imageRendering: 'pixelated',
+              maxWidth: '90%',
+              maxHeight: '90%',
+              border: '1px solid #123322',
+              boxShadow: '0 0 40px rgba(0, 255, 153, 0.08)',
+              userSelect: 'none',
+              pointerEvents: 'none'
             }}
           />
-        </div>
-      </div>
-
-      {/* UI PANEL */}
-
-      <div
-        style={{
-          width: '340px',
-          height: '100%',
-          overflowY: 'auto',
-          borderLeft: '1px solid #181818',
-          background: '#090909',
-          padding: '24px',
-          boxSizing: 'border-box'
-        }}
-      >
-        <div
-          style={{
-            marginBottom: '24px'
-          }}
-        >
-          <h1
-            style={{
-              margin: 0,
-              fontSize: '24px',
-              letterSpacing: '2px'
-            }}
-          >
-            SIGNAL DECAY
-          </h1>
-
+        ) : (
           <div
             style={{
-              color: '#555',
-              marginTop: '6px',
-              fontSize: '12px'
+              color: '#32634c',
+              letterSpacing: 3
             }}
           >
-            GENERATIVE IMAGE ENGINE
+            LOAD IMAGE
           </div>
+        )}
+      </div>
+
+      <div
+        className="app-side-panel"
+        style={{
+          width: 405,
+          height: '100vh',
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          padding: 30,
+          background: '#050505',
+          borderLeft: '1px solid #123322'
+        }}
+      >
+        <h1
+          style={{
+            margin: 0,
+            letterSpacing: 8,
+            fontSize: 28,
+            color: '#00ff99'
+          }}
+        >
+          SIGNAL DECAY
+        </h1>
+
+        <div
+          style={{
+            color: '#777',
+            marginTop: 8,
+            letterSpacing: 1
+          }}
+        >
+          GENERATIVE IMAGE ENGINE
         </div>
 
-        <input
-          type="file"
-          onChange={(e) => {
-            markAsCustom();
-            handleImageUpload(e);
-          }}
-          style={{
-            width: '100%',
-            marginBottom: '20px'
-          }}
-        />
+        <div style={{ marginTop: 28 }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            style={{ display: 'none' }}
+          />
 
-        {/* PRESETS */}
+          <button
+            onClick={() => {
+              fileInputRef.current?.click();
+            }}
+            style={{
+              ...activeButtonStyle,
+              width: '100%'
+            }}
+          >
+            {originalImage ? 'CHANGE IMAGE' : 'LOAD IMAGE'}
+          </button>
+
+          {selectedFileName && (
+            <div
+              style={{
+                marginTop: 8,
+                color: '#777',
+                fontSize: 12,
+                wordBreak: 'break-all'
+              }}
+            >
+              {selectedFileName}
+            </div>
+          )}
+        </div>
 
         <div style={sectionStyle}>
           <div
             style={{
-              fontSize: '12px',
-              color: '#666',
-              marginBottom: '10px',
-              letterSpacing: '1px'
+              fontSize: 12,
+              letterSpacing: 2,
+              color: '#7c7c7c'
             }}
           >
             PRESET
           </div>
 
-          <select
-            value={selectedPresetName}
-            onChange={(e) => {
-              const presetName = e.target.value;
+          <UiSelect
+  value={selectedPresetName}
+  options={[
+    {
+      value: 'CUSTOM',
+      label: 'CUSTOM'
+    },
+    ...PRESETS.map((preset) => ({
+      value: preset.name,
+      label: preset.name
+    }))
+  ]}
+  onChange={(value) => {
+    if (value === selectedPresetName) {
+      return;
+    }
 
-              setSelectedPresetName(presetName);
+    if (value === 'CUSTOM') {
+      setSelectedPresetName('CUSTOM');
+      return;
+    }
 
-              const preset = PRESETS.find(
-                (item) => item.name === presetName
-              );
+    const preset = PRESETS.find(
+      (item) => item.name === value
+    );
 
-              if (preset) {
-                applyPreset(preset);
-              }
-            }}
+    if (!preset) {
+      return;
+    }
+
+    applyPreset(preset);
+  }}
+/>
+        </div>
+
+        <div style={sectionStyle}>
+          <div
             style={{
-              width: '100%',
-              background: '#0a0a0a',
-              color: '#00ff99',
-              border: '1px solid #222',
-              borderRadius: '8px',
-              padding: '10px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              letterSpacing: '1px',
-              outline: 'none'
+              fontSize: 12,
+              letterSpacing: 2,
+              color: '#7c7c7c'
             }}
           >
-            <option value="">CUSTOM</option>
+            SYSTEM
+          </div>
 
-            {PRESETS.map((preset) => (
-              <option key={preset.name} value={preset.name}>
-                {preset.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* ZOOM */}
-
-        <div style={sectionStyle}>
-          <label>
-            Zoom: {zoom.toFixed(1)}x
-          </label>
-
-          <input
-            type="range"
-            min="0.5"
-            max="5"
-            step="0.1"
-            value={zoom}
-            onChange={(e) => {
-              markAsCustom();
-              setZoom(Number(e.target.value));
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              marginTop: 10
             }}
-            style={sliderStyle}
+          >
+            <button
+              onClick={clearEffects}
+              style={{
+                ...buttonStyle,
+                flex: 1,
+                padding: 8
+              }}
+            >
+              CLEAR EFFECTS
+            </button>
+
+            <button
+              onClick={fockGoBack}
+              disabled={!lastEffectsSnapshot}
+              style={{
+                ...buttonStyle,
+                flex: 1,
+                padding: 8,
+                opacity: lastEffectsSnapshot ? 1 : 0.35,
+                cursor: lastEffectsSnapshot
+                  ? 'pointer'
+                  : 'not-allowed'
+              }}
+            >
+              FOCK GO BACK
+            </button>
+          </div>
+        </div>
+
+        <div style={sectionStyle}>
+          <UiCheckbox
+            checked={useSeed}
+            onChange={(checked) => {
+              markAsCustom();
+              setUseSeed(checked);
+            }}
+            label="Use Seed"
           />
-        </div>
 
-        {/* PIXELATION */}
-
-        <div style={sectionStyle}>
-          <label>
-            <input
-              type="checkbox"
-              checked={usePixelation}
-              onChange={(e) => {
-                markAsCustom();
-                setUsePixelation(
-                  e.target.checked
-                );
-              }}
-            />
-            {'  '}
-            Pixelation
-          </label>
-
-          {usePixelation && (
+          {useSeed && (
             <>
-              <div style={sliderLabelStyle}>
-                PIXEL SIZE
-              </div>
+              <div style={sliderLabelStyle}>SEED</div>
 
-              <input
-                type="range"
-                min="1"
-                max="32"
-                value={pixelSize}
-                onChange={(e) => {
-                  markAsCustom();
-                  setPixelSize(
-                    Number(e.target.value)
-                  );
-                }}
-                style={sliderStyle}
-              />
-            </>
-          )}
-        </div>
-
-          {/* PSX LOOK */}
-
-<div style={sectionStyle}>
-  <label>
-    <input
-      type="checkbox"
-      checked={usePsx}
-      onChange={(e) => {
-        markAsCustom();
-        setUsePsx(e.target.checked);
-      }}
-    />
-    {'  '}
-    PS1 Look
-  </label>
-
-  {usePsx && (
-    <>
-      <div style={sliderLabelStyle}>
-        RESOLUTION SCALE
-      </div>
-
-      <input
-        type="range"
-        min="1"
-        max="12"
-        step="1"
-        value={psxResolutionScale}
-        onChange={(e) => {
-          markAsCustom();
-          setPsxResolutionScale(
-            Number(e.target.value)
-          );
-        }}
-        style={sliderStyle}
-      />
-
-      <div style={sliderLabelStyle}>
-        COLOR LEVELS
-      </div>
-
-      <input
-        type="range"
-        min="2"
-        max="32"
-        step="1"
-        value={psxColorLevels}
-        onChange={(e) => {
-          markAsCustom();
-          setPsxColorLevels(
-            Number(e.target.value)
-          );
-        }}
-        style={sliderStyle}
-      />
-
-      <div style={sliderLabelStyle}>
-        TEXTURE WARP
-      </div>
-
-      <input
-        type="range"
-        min="0"
-        max="20"
-        step="1"
-        value={psxWarpAmount}
-        onChange={(e) => {
-          markAsCustom();
-          setPsxWarpAmount(
-            Number(e.target.value)
-          );
-        }}
-        style={sliderStyle}
-      />
-
-      <div style={sliderLabelStyle}>
-        JITTER
-      </div>
-
-      <input
-        type="range"
-        min="0"
-        max="20"
-        step="1"
-        value={psxJitterAmount}
-        onChange={(e) => {
-          markAsCustom();
-          setPsxJitterAmount(
-            Number(e.target.value)
-          );
-        }}
-        style={sliderStyle}
-      />
-
-      <div style={sliderLabelStyle}>
-        BLOCK SIZE
-      </div>
-
-      <input
-        type="range"
-        min="4"
-        max="48"
-        step="1"
-        value={psxBlockSize}
-        onChange={(e) => {
-          markAsCustom();
-          setPsxBlockSize(
-            Number(e.target.value)
-          );
-        }}
-        style={sliderStyle}
-      />
-
-      <div style={sliderLabelStyle}>
-        DITHER
-      </div>
-
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.05"
-        value={psxDitherStrength}
-        onChange={(e) => {
-          markAsCustom();
-          setPsxDitherStrength(
-            Number(e.target.value)
-          );
-        }}
-        style={sliderStyle}
-      />
-
-      <div style={sliderLabelStyle}>
-        COMPOSITE BLUR
-      </div>
-
-      <input
-        type="range"
-        min="0"
-        max="6"
-        step="0.1"
-        value={psxCompositeBlur}
-        onChange={(e) => {
-          markAsCustom();
-          setPsxCompositeBlur(
-            Number(e.target.value)
-          );
-        }}
-        style={sliderStyle}
-      />
-
-      <div style={sliderLabelStyle}>
-        CHROMA BLEED
-      </div>
-
-      <input
-        type="range"
-        min="0"
-        max="8"
-        step="1"
-        value={psxChromaBleed}
-        onChange={(e) => {
-          markAsCustom();
-          setPsxChromaBleed(
-            Number(e.target.value)
-          );
-        }}
-        style={sliderStyle}
-      />
-    </>
-  )}
-</div>
-        {/* PALETTE */}
-
-        <div style={sectionStyle}>
-          <label>
-            <input
-              type="checkbox"
-              checked={usePalette}
-              onChange={(e) => {
-                markAsCustom();
-                setUsePalette(
-                  e.target.checked
-                );
-              }}
-            />
-            {'  '}
-            Palette
-          </label>
-
-          {usePalette && (
-            <>
               <div
                 style={{
                   display: 'flex',
-                  gap: '10px',
-                  marginTop: '12px',
-                  alignItems: 'center'
+                  gap: 8,
+                  marginTop: 6
                 }}
               >
-                <input
-                  type="color"
-                  value={colorStart}
-                  onChange={(e) => {
+                <div className="ui-number-wrap">
+                  <input
+                    className="ui-number-input"
+                    type="number"
+                    value={seed}
+                    onChange={(event) => {
+                      markAsCustom();
+                      setSeed(Number(event.target.value));
+                    }}
+                  />
+
+                  <div className="ui-stepper">
+                    <button
+                      type="button"
+                      className="ui-stepper-btn"
+                      onClick={() => {
+                        markAsCustom();
+                        changeSeed(1);
+                      }}
+                    >
+                      <span className="ui-stepper-triangle-up" />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="ui-stepper-btn"
+                      onClick={() => {
+                        markAsCustom();
+                        changeSeed(-1);
+                      }}
+                    >
+                      <span className="ui-stepper-triangle-down" />
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
                     markAsCustom();
-                    setColorStart(
-                      e.target.value
-                    );
+                    setSeed(createSeed());
                   }}
                   style={{
-                    width: '42px',
-                    height: '28px',
-                    padding: 0,
-                    border: 'none',
-                    outline: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer'
+                    ...buttonStyle,
+                    padding: '8px 10px'
                   }}
-                />
-
-                <input
-                  type="color"
-                  value={colorEnd}
-                  onChange={(e) => {
-                    markAsCustom();
-                    setColorEnd(
-                      e.target.value
-                    );
-                  }}
-                  style={{
-                    width: '42px',
-                    height: '28px',
-                    padding: 0,
-                    border: 'none',
-                    outline: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer'
-                  }}
-                />
+                >
+                  RANDOM
+                </button>
               </div>
-
-              <div style={sliderLabelStyle}>
-                COLOR STEPS
-              </div>
-
-              <input
-                type="range"
-                min="2"
-                max="16"
-                value={steps}
-                onChange={(e) => {
-                  markAsCustom();
-                  setSteps(
-                    Number(e.target.value)
-                  );
-                }}
-                style={sliderStyle}
-              />
-
-              <label
-                style={{
-                  display: 'block',
-                  marginTop: '12px'
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={swapPaletteColors}
-                  onChange={(e) => {
-                    markAsCustom();
-                    setSwapPaletteColors(
-                      e.target.checked
-                    );
-                  }}
-                />
-                {'  '}
-                Swap Colors
-              </label>
             </>
           )}
         </div>
 
-        {/* DITHER */}
+        <EffectSections
+          sectionStyle={sectionStyle}
+          sliderLabelStyle={sliderLabelStyle}
+          markAsCustom={markAsCustom}
+          values={{
+            usePixelation,
+            pixelSize,
+
+            usePsx,
+            psxResolutionScale,
+            psxColorLevels,
+            psxWarpAmount,
+            psxJitterAmount,
+            psxDitherStrength,
+            psxBlockSize,
+            psxCompositeBlur,
+            psxChromaBleed,
+
+            usePixelSort,
+            pixelSortDirection,
+            pixelSortMode,
+            pixelSortThreshold,
+            pixelSortAmount,
+
+            usePalette,
+            colorStart,
+            colorEnd,
+            steps,
+            swapPaletteColors,
+
+            useDither,
+            ditherMode,
+            threshold,
+
+            useGlitch,
+            glitch,
+            glitchChaos,
+            glitchWidth,
+            glitchOverrideDither,
+            edgeGlitchOnly,
+
+            useChromatic,
+            chromaticOffset,
+
+            useAscii,
+            asciiCellSize,
+            asciiOpacity,
+            asciiMode,
+            asciiColor,
+
+            usePatternDither,
+            patternDitherShape,
+            patternDitherScale,
+            patternDitherDensity,
+            patternDitherOpacity,
+            patternDitherColor,
+            patternDitherBackgroundColor,
+            patternDitherInvert,
+            patternDitherReplaceImage,
+
+            useSignalWaves,
+            signalWavesMode,
+            signalWavesFrequency,
+            signalWavesAmplitude,
+            signalWavesDensity,
+            signalWavesOpacity,
+            signalWavesColor,
+            signalWavesBackgroundColor,
+            signalWavesReplaceImage,
+            signalWavesReactToImage,
+
+            useNoise,
+            noiseAmount,
+
+            useScanlines,
+            scanlineIntensity,
+
+            useDataOverlay,
+            dataOverlayMode,
+            dataOverlayDensity,
+            dataOverlayFontSize,
+            dataOverlayOpacity,
+            dataOverlayColor,
+            dataOverlayCustomText,
+
+            useHudFrame,
+            hudFrameStyle,
+            hudFrameOpacity,
+            hudFrameColor,
+            hudFrameShowGrid,
+            hudFrameShowLabels,
+            hudFrameShowCornerMarks,
+            hudFrameSafeArea
+          }}
+          setters={{
+            setUsePixelation,
+            setPixelSize,
+
+            setUsePsx,
+            setPsxResolutionScale,
+            setPsxColorLevels,
+            setPsxWarpAmount,
+            setPsxJitterAmount,
+            setPsxDitherStrength,
+            setPsxBlockSize,
+            setPsxCompositeBlur,
+            setPsxChromaBleed,
+
+            setUsePixelSort,
+            setPixelSortDirection,
+            setPixelSortMode,
+            setPixelSortThreshold,
+            setPixelSortAmount,
+
+            setUsePalette,
+            setColorStart,
+            setColorEnd,
+            setSteps,
+            setSwapPaletteColors,
+
+            setUseDither,
+            setDitherMode,
+            setThreshold,
+
+            setUseGlitch,
+            setGlitch,
+            setGlitchChaos,
+            setGlitchWidth,
+            setGlitchOverrideDither,
+            setEdgeGlitchOnly,
+
+            setUseChromatic,
+            setChromaticOffset,
+
+            setUseAscii,
+            setAsciiCellSize,
+            setAsciiOpacity,
+            setAsciiMode,
+            setAsciiColor,
+
+            setUsePatternDither,
+            setPatternDitherShape,
+            setPatternDitherScale,
+            setPatternDitherDensity,
+            setPatternDitherOpacity,
+            setPatternDitherColor,
+            setPatternDitherBackgroundColor,
+            setPatternDitherInvert,
+            setPatternDitherReplaceImage,
+
+            setUseSignalWaves,
+            setSignalWavesMode,
+            setSignalWavesFrequency,
+            setSignalWavesAmplitude,
+            setSignalWavesDensity,
+            setSignalWavesOpacity,
+            setSignalWavesColor,
+            setSignalWavesBackgroundColor,
+            setSignalWavesReplaceImage,
+            setSignalWavesReactToImage,
+
+            setUseNoise,
+            setNoiseAmount,
+
+            setUseScanlines,
+            setScanlineIntensity,
+
+            setUseDataOverlay,
+            setDataOverlayMode,
+            setDataOverlayDensity,
+            setDataOverlayFontSize,
+            setDataOverlayOpacity,
+            setDataOverlayColor,
+            setDataOverlayCustomText,
+
+            setUseHudFrame,
+            setHudFrameStyle,
+            setHudFrameOpacity,
+            setHudFrameColor,
+            setHudFrameShowGrid,
+            setHudFrameShowLabels,
+            setHudFrameShowCornerMarks,
+            setHudFrameSafeArea
+          }}
+        />
 
         <div style={sectionStyle}>
-          <label>
-            <input
-              type="checkbox"
-              checked={useDither}
-              onChange={(e) => {
-                markAsCustom();
-                setUseDither(
-                  e.target.checked
-                );
-              }}
-            />
-            {'  '}
-            Dither
-          </label>
+          <div
+            style={{
+              fontSize: 12,
+              letterSpacing: 2,
+              color: '#7c7c7c'
+            }}
+          >
+            FORMAT
+          </div>
 
-          {useDither && (
-            <>
-              <div style={sliderLabelStyle}>
-                INTENSITY
-              </div>
-
-              <input
-                type="range"
-                min="0"
-                max="255"
-                value={threshold}
-                onChange={(e) => {
-                  markAsCustom();
-                  setThreshold(
-                    Number(e.target.value)
-                  );
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              marginTop: 10
+            }}
+          >
+            {(['png', 'jpeg'] as ExportFormat[]).map((format) => (
+              <button
+                key={format}
+                onClick={() => {
+                  setExportFormat(format);
                 }}
-                style={sliderStyle}
-              />
-            </>
-          )}
-        </div>
-
-        {/* GLITCH */}
-
-        <div style={sectionStyle}>
-          <label>
-            <input
-              type="checkbox"
-              checked={useGlitch}
-              onChange={(e) => {
-                markAsCustom();
-                setUseGlitch(e.target.checked);
-              }}
-            />
-            {'  '}
-            Glitch
-          </label>
-
-          {useGlitch && (
-            <div style={{ marginTop: '12px' }}>
-              {/* SHIFT */}
-
-              <div style={{ marginBottom: '16px' }}>
-                <div style={sliderLabelStyle}>
-                  SHIFT
-                </div>
-
-                <input
-                  type="range"
-                  min="0"
-                  max="20"
-                  value={glitch}
-                  onChange={(e) => {
-                    markAsCustom();
-                    setGlitch(Number(e.target.value));
-                  }}
-                  style={sliderStyle}
-                />
-              </div>
-
-              {/* WIDTH */}
-
-              <div style={{ marginBottom: '16px' }}>
-                <div style={sliderLabelStyle}>
-                  WIDTH
-                </div>
-
-                <input
-                  type="range"
-                  min="10"
-                  max="100"
-                  step="5"
-                  value={glitchWidth}
-                  onChange={(e) => {
-                    markAsCustom();
-
-                    const w = Number(e.target.value);
-
-                    setGlitchWidth(w);
-
-                    setGlitchStrips(
-                      calcStrips(glitchChaos, w)
-                    );
-                  }}
-                  style={sliderStyle}
-                />
-              </div>
-
-              {/* CHAOS */}
-
-              <div style={{ marginBottom: '16px' }}>
-                <div style={sliderLabelStyle}>
-                  CHAOS
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '8px',
-                    alignItems: 'center'
-                  }}
-                >
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={glitchChaos}
-                    onChange={(e) => {
-                      markAsCustom();
-
-                      const val = Number(e.target.value);
-
-                      setGlitchChaos(val);
-
-                      setGlitchStrips(
-                        calcStrips(
-                          val,
-                          glitchWidth
-                        )
-                      );
-                    }}
-                    style={{
-                      ...sliderStyle,
-                      marginTop: 0
-                    }}
-                  />
-
-                  <button
-                    onClick={() => {
-                      markAsCustom();
-
-                      setGlitchStrips(
-                        calcStrips(
-                          glitchChaos,
-                          glitchWidth
-                        )
-                      );
-                    }}
-                    disabled={glitchChaos === 0}
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '8px',
-                      border: '1px solid #222',
-                      background: '#111',
-                      color: '#00ff99',
-                      cursor:
-                        glitchChaos === 0
-                          ? 'not-allowed'
-                          : 'pointer',
-                      opacity:
-                        glitchChaos === 0
-                          ? 0.3
-                          : 1
-                    }}
-                  >
-                    🎲
-                  </button>
-                </div>
-              </div>
-
-              {/* MODES */}
-
-              <div
                 style={{
-                  borderTop: '1px solid #1a1a1a',
-                  paddingTop: '14px'
+                  ...(exportFormat === format
+                    ? activeButtonStyle
+                    : buttonStyle),
+                  flex: 1,
+                  padding: 8
                 }}
               >
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: '#666',
-                    marginBottom: '10px',
-                    letterSpacing: '1px'
-                  }}
-                >
-                  MODES
-                </div>
+                {format.toUpperCase()}
+              </button>
+            ))}
+          </div>
 
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '8px'
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={edgeGlitchOnly}
-                    onChange={(e) => {
-                      markAsCustom();
+          <div style={sliderLabelStyle}>DPI</div>
 
-                      setEdgeGlitchOnly(
-                        e.target.checked
-                      );
-                    }}
-                  />
-                  {'  '}
-                  Edge Only
-                </label>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              marginTop: 10
+            }}
+          >
+            {([72, 150, 300] as ExportDpi[]).map((dpi) => (
+              <button
+                key={dpi}
+                onClick={() => {
+                  setExportDpi(dpi);
+                }}
+                style={{
+                  ...(exportDpi === dpi
+                    ? activeButtonStyle
+                    : buttonStyle),
+                  flex: 1,
+                  padding: 8
+                }}
+              >
+                {dpi}
+              </button>
+            ))}
+          </div>
 
-                <label
-                  style={{
-                    display: 'block'
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={glitchOverrideDither}
-                    onChange={(e) => {
-                      markAsCustom();
+          {imageSizeInfo && (
+            <div
+              style={{
+                marginTop: 14,
+                paddingTop: 12,
+                borderTop: '1px solid #164d34',
+                color: '#7c7c7c',
+                fontSize: 11,
+                letterSpacing: 1,
+                lineHeight: 1.8
+              }}
+            >
+              <div>
+                SOURCE:{' '}
+                <span style={{ color: '#00ff99' }}>
+                  {imageSizeInfo.sourceWidth}×
+                  {imageSizeInfo.sourceHeight}
+                </span>
+              </div>
 
-                      setGlitchOverrideDither(
-                        e.target.checked
-                      );
-                    }}
-                  />
-                  {'  '}
-                  Override Palette
-                </label>
+              <div>
+                EXPORT:{' '}
+                <span style={{ color: '#00ff99' }}>
+                  {imageSizeInfo.exportWidth}×
+                  {imageSizeInfo.exportHeight}
+                </span>
               </div>
             </div>
           )}
-        </div>
 
-        {/* CHROMATIC */}
-
-        <div style={sectionStyle}>
-          <label>
-            <input
-              type="checkbox"
-              checked={useChromatic}
-              onChange={(e) => {
-                markAsCustom();
-
-                setUseChromatic(
-                  e.target.checked
-                );
-              }}
-            />
-            {'  '}
-            Chromatic
-          </label>
-
-          {useChromatic && (
-            <>
-              <div style={sliderLabelStyle}>
-                RGB OFFSET
-              </div>
-
-              <input
-                type="range"
-                min="0"
-                max="20"
-                value={chromaticOffset}
-                onChange={(e) => {
-                  markAsCustom();
-
-                  setChromaticOffset(
-                    Number(e.target.value)
-                  );
-                }}
-                style={sliderStyle}
-              />
-            </>
-          )}
-        </div>
-
-          {/* ASCII */}
-
-<div style={sectionStyle}>
-  <label>
-    <input
-      type="checkbox"
-      checked={useAscii}
-      onChange={(e) => {
-        markAsCustom();
-        setUseAscii(e.target.checked);
-      }}
-    />
-    {'  '}
-    ASCII
-  </label>
-
-  {useAscii && (
-    <>
-      <div style={sliderLabelStyle}>
-        CELL SIZE
-      </div>
-
-      <input
-        type="range"
-        min="4"
-        max="32"
-        step="1"
-        value={asciiCellSize}
-        onChange={(e) => {
-          markAsCustom();
-          setAsciiCellSize(Number(e.target.value));
-        }}
-        style={sliderStyle}
-      />
-
-      <div style={sliderLabelStyle}>
-        OPACITY
-      </div>
-
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.05"
-        value={asciiOpacity}
-        onChange={(e) => {
-          markAsCustom();
-          setAsciiOpacity(Number(e.target.value));
-        }}
-        style={sliderStyle}
-      />
-
-      <div style={sliderLabelStyle}>
-        MODE
-      </div>
-
-      <select
-        value={asciiMode}
-        onChange={(e) => {
-          markAsCustom();
-          setAsciiMode(e.target.value as 'overlay' | 'replace');
-        }}
-        style={{
-          width: '100%',
-          background: '#0a0a0a',
-          color: '#00ff99',
-          border: '1px solid #222',
-          borderRadius: '8px',
-          padding: '10px',
-          cursor: 'pointer',
-          fontSize: '12px',
-          letterSpacing: '1px',
-          outline: 'none'
-        }}
-      >
-        <option value="overlay">OVERLAY</option>
-        <option value="replace">REPLACE</option>
-      </select>
-
-      <div style={sliderLabelStyle}>
-        COLOR
-      </div>
-
-      <input
-        type="color"
-        value={asciiColor}
-        onChange={(e) => {
-          markAsCustom();
-          setAsciiColor(e.target.value);
-        }}
-        style={{
-          width: '42px',
-          height: '28px',
-          padding: 0,
-          border: 'none',
-          outline: 'none',
-          background: 'transparent',
-          cursor: 'pointer'
-        }}
-      />
-    </>
-  )}
-</div>
-
-        {/* NOISE */}
-
-        <div style={sectionStyle}>
-          <label>
-            <input
-              type="checkbox"
-              checked={useNoise}
-              onChange={(e) => {
-                markAsCustom();
-
-                setUseNoise(
-                  e.target.checked
-                );
-              }}
-            />
-            {'  '}
-            Noise
-          </label>
-
-          {useNoise && (
-            <>
-              <div style={sliderLabelStyle}>
-                AMOUNT
-              </div>
-
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={noiseAmount}
-                onChange={(e) => {
-                  markAsCustom();
-
-                  setNoiseAmount(
-                    Number(e.target.value)
-                  );
-                }}
-                style={sliderStyle}
-              />
-            </>
-          )}
-        </div>
-
-        {/* SCANLINES */}
-
-        <div style={sectionStyle}>
-          <label>
-            <input
-              type="checkbox"
-              checked={useScanlines}
-              onChange={(e) => {
-                markAsCustom();
-
-                setUseScanlines(
-                  e.target.checked
-                );
-              }}
-            />
-            {'  '}
-            Scanlines
-          </label>
-
-          {useScanlines && (
-            <>
-              <div style={sliderLabelStyle}>
-                INTENSITY
-              </div>
-
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={scanlineIntensity}
-                onChange={(e) => {
-                  markAsCustom();
-
-                  setScanlineIntensity(
-                    Number(e.target.value)
-                  );
-                }}
-                style={sliderStyle}
-              />
-            </>
-          )}
+          <button
+            onClick={saveImage}
+            style={{
+              ...activeButtonStyle,
+              width: '100%',
+              marginTop: 16
+            }}
+          >
+            EXPORT
+          </button>
         </div>
       </div>
     </div>
+  );
+}
+
+type EffectSectionsProps = {
+  sectionStyle: CSSProperties;
+  sliderLabelStyle: CSSProperties;
+  markAsCustom: () => void;
+  values: any;
+  setters: any;
+};
+
+function EffectSections({
+  sectionStyle,
+  sliderLabelStyle,
+  markAsCustom,
+  values,
+  setters
+}: EffectSectionsProps) {
+  const [isDitherPanelOpen, setIsDitherPanelOpen] =
+    useState(values.useDither || values.usePatternDither);
+
+  const runWithoutPanelJump = (callback: () => void) => {
+    const panel = document.querySelector(
+      '.app-side-panel'
+    ) as HTMLDivElement | null;
+
+    const scrollTop = panel?.scrollTop ?? 0;
+
+    markAsCustom();
+    callback();
+
+    requestAnimationFrame(() => {
+      if (!panel) return;
+
+      panel.scrollTop = scrollTop;
+
+      requestAnimationFrame(() => {
+        panel.scrollTop = scrollTop;
+      });
+    });
+  };
+
+  return (
+    <>
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.usePixelation}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUsePixelation(checked);
+            });
+          }}
+          label="Pixelation"
+        />
+
+        {values.usePixelation && (
+          <>
+            <div style={sliderLabelStyle}>PIXEL SIZE</div>
+
+            <UiSlider
+              min={1}
+              max={32}
+              step={1}
+              value={values.pixelSize}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPixelSize(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.usePsx}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUsePsx(checked);
+            });
+          }}
+          label="PS1 Look"
+        />
+
+        {values.usePsx && (
+          <>
+            <div style={sliderLabelStyle}>RESOLUTION SCALE</div>
+
+            <UiSlider
+              min={1}
+              max={12}
+              step={1}
+              value={values.psxResolutionScale}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPsxResolutionScale(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>COLOR LEVELS</div>
+
+            <UiSlider
+              min={2}
+              max={32}
+              step={1}
+              value={values.psxColorLevels}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPsxColorLevels(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>TEXTURE WARP</div>
+
+            <UiSlider
+              min={0}
+              max={20}
+              step={1}
+              value={values.psxWarpAmount}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPsxWarpAmount(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>JITTER</div>
+
+            <UiSlider
+              min={0}
+              max={20}
+              step={1}
+              value={values.psxJitterAmount}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPsxJitterAmount(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>BLOCK SIZE</div>
+
+            <UiSlider
+              min={4}
+              max={48}
+              step={1}
+              value={values.psxBlockSize}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPsxBlockSize(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>DITHER</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.psxDitherStrength}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPsxDitherStrength(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>COMPOSITE BLUR</div>
+
+            <UiSlider
+              min={0}
+              max={6}
+              step={0.1}
+              value={values.psxCompositeBlur}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPsxCompositeBlur(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>CHROMA BLEED</div>
+
+            <UiSlider
+              min={0}
+              max={8}
+              step={1}
+              value={values.psxChromaBleed}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPsxChromaBleed(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.usePixelSort}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUsePixelSort(checked);
+            });
+          }}
+          label="Pixel Sorting"
+        />
+
+        {values.usePixelSort && (
+          <>
+            <div style={sliderLabelStyle}>DIRECTION</div>
+
+            <UiSelect
+              value={values.pixelSortDirection}
+              options={[
+                { value: 'horizontal', label: 'HORIZONTAL' },
+                { value: 'vertical', label: 'VERTICAL' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPixelSortDirection(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.pixelSortMode}
+              options={[
+                { value: 'bright', label: 'BRIGHT AREAS' },
+                { value: 'dark', label: 'DARK AREAS' },
+                { value: 'all', label: 'ALL PIXELS' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPixelSortMode(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>THRESHOLD</div>
+
+            <UiSlider
+              min={0}
+              max={255}
+              step={1}
+              value={values.pixelSortThreshold}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPixelSortThreshold(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>AMOUNT</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.pixelSortAmount}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPixelSortAmount(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.usePalette}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUsePalette(checked);
+            });
+          }}
+          label="Palette"
+        />
+
+        {values.usePalette && (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                marginTop: 12
+              }}
+            >
+              <UiColorInput
+                label="START COLOR"
+                value={values.colorStart}
+                onChange={(value) => {
+                  markAsCustom();
+                  setters.setColorStart(value);
+                }}
+              />
+
+              <UiColorInput
+                label="END COLOR"
+                value={values.colorEnd}
+                onChange={(value) => {
+                  markAsCustom();
+                  setters.setColorEnd(value);
+                }}
+              />
+            </div>
+
+            <div style={sliderLabelStyle}>STEPS</div>
+
+            <UiSlider
+              min={2}
+              max={16}
+              step={1}
+              value={values.steps}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setSteps(value);
+              }}
+            />
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.swapPaletteColors}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setSwapPaletteColors(checked);
+                }}
+                label="Swap Colors"
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={isDitherPanelOpen}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setIsDitherPanelOpen(checked);
+
+              if (!checked) {
+                setters.setUseDither(false);
+                setters.setUsePatternDither(false);
+              }
+            });
+          }}
+          label="Dither"
+        />
+
+        {isDitherPanelOpen && (
+          <>
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.useDither}
+                onChange={(checked) => {
+                  runWithoutPanelJump(() => {
+                    setters.setUseDither(checked);
+                  });
+                }}
+                label="Classic Dither"
+              />
+            </div>
+
+            {values.useDither && (
+              <div style={{ marginTop: 12 }}>
+                <div style={sliderLabelStyle}>MODE</div>
+
+                <UiSelect
+                  value={values.ditherMode}
+                  options={[
+                    {
+                      value: 'floyd-steinberg',
+                      label: 'FLOYD-STEINBERG'
+                    },
+                    {
+                      value: 'ordered-bayer',
+                      label: 'ORDERED BAYER'
+                    },
+                    {
+                      value: 'atkinson',
+                      label: 'ATKINSON'
+                    }
+                  ]}
+                  onChange={(value) => {
+                    markAsCustom();
+                    setters.setDitherMode(value);
+                  }}
+                />
+
+                <div style={sliderLabelStyle}>THRESHOLD</div>
+
+                <UiSlider
+                  min={0}
+                  max={255}
+                  step={1}
+                  value={values.threshold}
+                  onChange={(value) => {
+                    markAsCustom();
+                    setters.setThreshold(value);
+                  }}
+                />
+              </div>
+            )}
+
+            <div
+              style={{
+                marginTop: values.useDither ? 16 : 12,
+                paddingTop: values.useDither ? 12 : 0,
+                borderTop: values.useDither
+                  ? '1px solid #1c1c1c'
+                  : 'none'
+              }}
+            >
+              <UiCheckbox
+                checked={values.usePatternDither}
+                onChange={(checked) => {
+                  runWithoutPanelJump(() => {
+                    setters.setUsePatternDither(checked);
+                  });
+                }}
+                label="Pattern Dither"
+              />
+            </div>
+
+            {values.usePatternDither && (
+              <div style={{ marginTop: 12 }}>
+                <div style={sliderLabelStyle}>SHAPE</div>
+
+                <UiSelect
+                  value={values.patternDitherShape}
+                  options={[
+                    { value: 'dot', label: 'DOT MATRIX' },
+                    { value: 'circle', label: 'CIRCLE HALFTONE' },
+                    { value: 'square', label: 'SQUARE GRID' },
+                    { value: 'line', label: 'LINE FIELD' },
+                    { value: 'cross', label: 'CROSS GRID' },
+                    { value: 'ascii', label: 'ASCII FIELD' }
+                  ]}
+                  onChange={(value) => {
+                    markAsCustom();
+                    setters.setPatternDitherShape(value);
+                  }}
+                />
+
+                <div style={sliderLabelStyle}>SCALE</div>
+
+                <UiSlider
+                  min={4}
+                  max={80}
+                  step={1}
+                  value={values.patternDitherScale}
+                  onChange={(value) => {
+                    markAsCustom();
+                    setters.setPatternDitherScale(value);
+                  }}
+                />
+
+                <div style={sliderLabelStyle}>DENSITY</div>
+
+                <UiSlider
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={values.patternDitherDensity}
+                  onChange={(value) => {
+                    markAsCustom();
+                    setters.setPatternDitherDensity(value);
+                  }}
+                />
+
+                <div style={sliderLabelStyle}>OPACITY</div>
+
+                <UiSlider
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={values.patternDitherOpacity}
+                  onChange={(value) => {
+                    markAsCustom();
+                    setters.setPatternDitherOpacity(value);
+                  }}
+                />
+
+                <div style={{ marginTop: 12 }}>
+                  <UiColorInput
+                    label="COLOR"
+                    value={values.patternDitherColor}
+                    onChange={(value) => {
+                      markAsCustom();
+                      setters.setPatternDitherColor(value);
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginTop: 12 }}>
+                  <UiColorInput
+                    label="BACKGROUND"
+                    value={values.patternDitherBackgroundColor}
+                    onChange={(value) => {
+                      markAsCustom();
+                      setters.setPatternDitherBackgroundColor(value);
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginTop: 12 }}>
+                  <UiCheckbox
+                    checked={values.patternDitherInvert}
+                    onChange={(checked) => {
+                      markAsCustom();
+                      setters.setPatternDitherInvert(checked);
+                    }}
+                    label="Invert"
+                  />
+                </div>
+
+                <div style={{ marginTop: 12 }}>
+                  <UiCheckbox
+                    checked={values.patternDitherReplaceImage}
+                    onChange={(checked) => {
+                      markAsCustom();
+                      setters.setPatternDitherReplaceImage(checked);
+                    }}
+                    label="Replace Image"
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.useSignalWaves}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseSignalWaves(checked);
+            });
+          }}
+          label="Signal Waves"
+        />
+
+        {values.useSignalWaves && (
+          <>
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.signalWavesMode}
+              options={[
+                {
+                  value: 'horizontal',
+                  label: 'HORIZONTAL WAVES'
+                },
+                {
+                  value: 'vertical',
+                  label: 'VERTICAL WAVES'
+                },
+                {
+                  value: 'topographic',
+                  label: 'TOPOGRAPHIC'
+                },
+                {
+                  value: 'radar',
+                  label: 'RADAR RIPPLES'
+                }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setSignalWavesMode(
+                  value as SignalWavesMode
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>FREQUENCY</div>
+
+            <UiSlider
+              min={1}
+              max={80}
+              step={1}
+              value={values.signalWavesFrequency}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setSignalWavesFrequency(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>AMPLITUDE</div>
+
+            <UiSlider
+              min={0}
+              max={120}
+              step={1}
+              value={values.signalWavesAmplitude}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setSignalWavesAmplitude(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>DENSITY</div>
+
+            <UiSlider
+              min={4}
+              max={80}
+              step={1}
+              value={values.signalWavesDensity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setSignalWavesDensity(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>OPACITY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.signalWavesOpacity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setSignalWavesOpacity(value);
+              }}
+            />
+
+            <div style={{ marginTop: 12 }}>
+              <UiColorInput
+                label="COLOR"
+                value={values.signalWavesColor}
+                onChange={(value) => {
+                  markAsCustom();
+                  setters.setSignalWavesColor(value);
+                }}
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiColorInput
+                label="BACKGROUND"
+                value={values.signalWavesBackgroundColor}
+                onChange={(value) => {
+                  markAsCustom();
+                  setters.setSignalWavesBackgroundColor(value);
+                }}
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.signalWavesReactToImage}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setSignalWavesReactToImage(checked);
+                }}
+                label="React To Image"
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.signalWavesReplaceImage}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setSignalWavesReplaceImage(checked);
+                }}
+                label="Replace Image"
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.useGlitch}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseGlitch(checked);
+            });
+          }}
+          label="Glitch"
+        />
+
+        {values.useGlitch && (
+          <>
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.edgeGlitchOnly}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setEdgeGlitchOnly(checked);
+                }}
+                label="Edge Only"
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.glitchOverrideDither}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setGlitchOverrideDither(checked);
+                }}
+                label="Override Palette"
+              />
+            </div>
+
+            <div style={sliderLabelStyle}>WIDTH</div>
+
+            <UiSlider
+              min={10}
+              max={100}
+              step={1}
+              value={values.glitchWidth}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setGlitchWidth(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>SHIFT</div>
+
+            <UiSlider
+              min={0}
+              max={30}
+              step={1}
+              value={values.glitch}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setGlitch(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>CHAOS</div>
+
+            <UiSlider
+              min={0}
+              max={100}
+              step={1}
+              value={values.glitchChaos}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setGlitchChaos(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.useChromatic}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseChromatic(checked);
+            });
+          }}
+          label="Chromatic"
+        />
+
+        {values.useChromatic && (
+          <>
+            <div style={sliderLabelStyle}>OFFSET</div>
+
+            <UiSlider
+              min={0}
+              max={20}
+              step={1}
+              value={values.chromaticOffset}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setChromaticOffset(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.useAscii}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseAscii(checked);
+            });
+          }}
+          label="ASCII"
+        />
+
+        {values.useAscii && (
+          <>
+            <div style={sliderLabelStyle}>CELL SIZE</div>
+
+            <UiSlider
+              min={4}
+              max={32}
+              step={1}
+              value={values.asciiCellSize}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setAsciiCellSize(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>OPACITY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.asciiOpacity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setAsciiOpacity(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.asciiMode}
+              options={[
+                { value: 'overlay', label: 'OVERLAY' },
+                { value: 'replace', label: 'REPLACE' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setAsciiMode(value);
+              }}
+            />
+
+            <div style={{ marginTop: 9 }}>
+              <UiColorInput
+                label="COLOR"
+                value={values.asciiColor}
+                onChange={(value) => {
+                  markAsCustom();
+                  setters.setAsciiColor(value);
+                }}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.useNoise}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseNoise(checked);
+            });
+          }}
+          label="Noise"
+        />
+
+        {values.useNoise && (
+          <>
+            <div style={sliderLabelStyle}>AMOUNT</div>
+
+            <UiSlider
+              min={0}
+              max={100}
+              step={1}
+              value={values.noiseAmount}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setNoiseAmount(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.useScanlines}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseScanlines(checked);
+            });
+          }}
+          label="Scanlines"
+        />
+
+        {values.useScanlines && (
+          <>
+            <div style={sliderLabelStyle}>INTENSITY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.scanlineIntensity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setScanlineIntensity(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.useDataOverlay}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseDataOverlay(checked);
+            });
+          }}
+          label="Data Overlay"
+        />
+
+        {values.useDataOverlay && (
+          <>
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.dataOverlayMode}
+              options={[
+                { value: 'random-codes', label: 'RANDOM CODES' },
+                { value: 'coordinates', label: 'COORDINATES' },
+                { value: 'image-info', label: 'IMAGE INFO' },
+                { value: 'warning', label: 'WARNING TEXT' },
+                { value: 'custom', label: 'CUSTOM TEXT' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setDataOverlayMode(value);
+              }}
+            />
+
+            {values.dataOverlayMode === 'custom' && (
+              <>
+                <div style={sliderLabelStyle}>TEXT</div>
+
+                <input
+                  className="ui-number-input"
+                  value={values.dataOverlayCustomText}
+                  onChange={(event) => {
+                    markAsCustom();
+                    setters.setDataOverlayCustomText(
+                      event.target.value
+                    );
+                  }}
+                  style={{
+                    width: '100%',
+                    marginTop: 6,
+                    border: '1px solid #164d34'
+                  }}
+                  spellCheck={false}
+                />
+              </>
+            )}
+
+            <div style={sliderLabelStyle}>DENSITY</div>
+
+            <UiSlider
+              min={0}
+              max={100}
+              step={1}
+              value={values.dataOverlayDensity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setDataOverlayDensity(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>FONT SIZE</div>
+
+            <UiSlider
+              min={6}
+              max={48}
+              step={1}
+              value={values.dataOverlayFontSize}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setDataOverlayFontSize(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>OPACITY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.dataOverlayOpacity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setDataOverlayOpacity(value);
+              }}
+            />
+
+            <div style={{ marginTop: 12 }}>
+              <UiColorInput
+                label="COLOR"
+                value={values.dataOverlayColor}
+                onChange={(value) => {
+                  markAsCustom();
+                  setters.setDataOverlayColor(value);
+                }}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.useHudFrame}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseHudFrame(checked);
+            });
+          }}
+          label="HUD Frame"
+        />
+
+        {values.useHudFrame && (
+          <>
+            <div style={sliderLabelStyle}>STYLE</div>
+
+            <UiSelect
+              value={values.hudFrameStyle}
+              options={[
+                { value: 'scan-frame', label: 'SCAN FRAME' },
+                { value: 'archive-frame', label: 'ARCHIVE FRAME' },
+                { value: 'targeting-frame', label: 'TARGETING FRAME' },
+                { value: 'corrupted-ui', label: 'CORRUPTED UI' },
+                { value: 'minimal', label: 'MINIMAL' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setHudFrameStyle(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>OPACITY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.hudFrameOpacity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setHudFrameOpacity(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>SAFE AREA</div>
+
+            <UiSlider
+              min={0}
+              max={20}
+              step={1}
+              value={values.hudFrameSafeArea}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setHudFrameSafeArea(value);
+              }}
+            />
+
+            <div style={{ marginTop: 12 }}>
+              <UiColorInput
+                label="COLOR"
+                value={values.hudFrameColor}
+                onChange={(value) => {
+                  markAsCustom();
+                  setters.setHudFrameColor(value);
+                }}
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.hudFrameShowGrid}
+                onChange={(checked) => {
+                  runWithoutPanelJump(() => {
+                    setters.setHudFrameShowGrid(checked);
+                  });
+                }}
+                label="Grid"
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.hudFrameShowLabels}
+                onChange={(checked) => {
+                  runWithoutPanelJump(() => {
+                    setters.setHudFrameShowLabels(checked);
+                  });
+                }}
+                label="Labels"
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.hudFrameShowCornerMarks}
+                onChange={(checked) => {
+                  runWithoutPanelJump(() => {
+                    setters.setHudFrameShowCornerMarks(checked);
+                  });
+                }}
+                label="Corner Marks"
+              />
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }
 

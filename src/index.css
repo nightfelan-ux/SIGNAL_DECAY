@@ -8,7 +8,21 @@ body,
   background: #050505;
   overflow: hidden;
 }
+:root {
+  font-family: 'Datatype', monospace;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
+body,
+button,
+input,
+select,
+textarea {
+  font-family: 'Datatype', monospace;
+}
 * {
   box-sizing: border-box;
 }
