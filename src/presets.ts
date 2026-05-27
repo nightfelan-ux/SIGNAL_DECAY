@@ -1362,5 +1362,248 @@ export const PRESETS: EffectPreset[] = [
 
     useScanlines: true,
     scanlineIntensity: 0.25
+  }),
+    createPreset('SECTOR MAP', {
+    usePanelLayout: true,
+    panelLayoutMode: 'diagnostic-wall',
+    panelLayoutGap: 10,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#00ff99',
+    panelLayoutBackgroundColor: '#050505',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 72,
+    panelLayoutMirrorAlternate: false,
+
+    usePalette: true,
+    colorStart: '#020402',
+    colorEnd: '#00ff99',
+    steps: 5,
+
+    useDither: true,
+    ditherMode: 'ordered-bayer',
+    threshold: 155,
+
+    useDataOverlay: true,
+    dataOverlayMode: 'coordinates',
+    dataOverlayDensity: 22,
+    dataOverlayFontSize: 9,
+    dataOverlayOpacity: 0.36,
+    dataOverlayColor: '#00ff99',
+
+    useHudFrame: true,
+    hudFrameStyle: 'archive-frame',
+    hudFrameOpacity: 0.72,
+    hudFrameColor: '#00ff99',
+    hudFrameShowGrid: true,
+    hudFrameShowLabels: true,
+    hudFrameShowCornerMarks: true,
+
+    useScanlines: true,
+    scanlineIntensity: 0.22,
+
+    useNoise: true,
+    noiseAmount: 10
+  }),
+
+  createPreset('FAULT GRID', {
+    usePanelLayout: true,
+    panelLayoutMode: 'grid-2x2',
+    panelLayoutGap: 12,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#ff003c',
+    panelLayoutBackgroundColor: '#050000',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 68,
+    panelLayoutMirrorAlternate: true,
+
+    usePalette: true,
+    colorStart: '#070000',
+    colorEnd: '#ff003c',
+    steps: 4,
+
+    useGlitch: true,
+    glitch: 14,
+    glitchChaos: 58,
+    glitchWidth: 72,
+    glitchOverrideDither: false,
+    edgeGlitchOnly: true,
+
+    useChromatic: true,
+    chromaticOffset: 6,
+
+    useDataOverlay: true,
+    dataOverlayMode: 'warning',
+    dataOverlayDensity: 20,
+    dataOverlayFontSize: 10,
+    dataOverlayOpacity: 0.38,
+    dataOverlayColor: '#ff003c',
+
+    useHudFrame: true,
+    hudFrameStyle: 'corrupted-ui',
+    hudFrameOpacity: 0.68,
+    hudFrameColor: '#ff003c',
+
+    useNoise: true,
+    noiseAmount: 18
+  }),
+
+  createPreset('LUMA RIFT', {
+    usePalette: true,
+    colorStart: '#020208',
+    colorEnd: '#00c8ff',
+    steps: 6,
+
+    useSignalWaves: true,
+    signalWavesMode: 'vertical',
+    signalWavesFrequency: 28,
+    signalWavesAmplitude: 34,
+    signalWavesDensity: 14,
+    signalWavesOpacity: 0.58,
+    signalWavesColor: '#00c8ff',
+    signalWavesBackgroundColor: '#050505',
+    signalWavesReplaceImage: false,
+    signalWavesReactToImage: true,
+
+    usePixelSort: true,
+    pixelSortDirection: 'vertical',
+    pixelSortMode: 'bright',
+    pixelSortThreshold: 110,
+    pixelSortAmount: 0.62,
+
+    useDither: true,
+    ditherMode: 'atkinson',
+    threshold: 145,
+
+    useHudFrame: true,
+    hudFrameStyle: 'minimal',
+    hudFrameOpacity: 0.48,
+    hudFrameColor: '#00c8ff',
+    hudFrameShowGrid: false,
+    hudFrameShowLabels: true,
+    hudFrameShowCornerMarks: true,
+
+    useScanlines: true,
+    scanlineIntensity: 0.18
+  }),
+
+  createPreset('NULL TOPOGRAPHY', {
+    usePalette: true,
+    colorStart: '#030306',
+    colorEnd: '#d6ff00',
+    steps: 5,
+
+    useSignalWaves: true,
+    signalWavesMode: 'topographic',
+    signalWavesFrequency: 12,
+    signalWavesAmplitude: 38,
+    signalWavesDensity: 16,
+    signalWavesOpacity: 0.68,
+    signalWavesColor: '#d6ff00',
+    signalWavesBackgroundColor: '#050505',
+    signalWavesReplaceImage: false,
+    signalWavesReactToImage: true,
+
+    usePatternDither: true,
+    patternDitherShape: 'line',
+    patternDitherScale: 18,
+    patternDitherDensity: 76,
+    patternDitherOpacity: 0.46,
+    patternDitherColor: '#d6ff00',
+    patternDitherBackgroundColor: '#050505',
+    patternDitherInvert: false,
+    patternDitherReplaceImage: false,
+
+    useDataOverlay: true,
+    dataOverlayMode: 'image-info',
+    dataOverlayDensity: 12,
+    dataOverlayFontSize: 10,
+    dataOverlayOpacity: 0.32,
+    dataOverlayColor: '#d6ff00',
+
+    useNoise: true,
+    noiseAmount: 12
+  }),
+
+  createPreset('RELAY STRIPS', {
+    usePanelLayout: true,
+    panelLayoutMode: 'vertical-strips',
+    panelLayoutGap: 6,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#ff00cc',
+    panelLayoutBackgroundColor: '#070007',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 62,
+    panelLayoutMirrorAlternate: true,
+
+    usePalette: true,
+    colorStart: '#070007',
+    colorEnd: '#ff00cc',
+    steps: 5,
+
+    usePixelSort: true,
+    pixelSortDirection: 'vertical',
+    pixelSortMode: 'bright',
+    pixelSortThreshold: 118,
+    pixelSortAmount: 0.72,
+
+    useSignalWaves: true,
+    signalWavesMode: 'vertical',
+    signalWavesFrequency: 34,
+    signalWavesAmplitude: 18,
+    signalWavesDensity: 10,
+    signalWavesOpacity: 0.42,
+    signalWavesColor: '#ff00cc',
+
+    useChromatic: true,
+    chromaticOffset: 7,
+
+    useNoise: true,
+    noiseAmount: 16
+  }),
+
+  createPreset('ARCHIVE CONTACT SHEET', {
+    usePanelLayout: true,
+    panelLayoutMode: 'diagnostic-wall',
+    panelLayoutGap: 8,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#b8f7ff',
+    panelLayoutBackgroundColor: '#020406',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 78,
+    panelLayoutMirrorAlternate: false,
+
+    usePalette: true,
+    colorStart: '#020406',
+    colorEnd: '#b8f7ff',
+    steps: 4,
+
+    useDither: true,
+    ditherMode: 'ordered-bayer',
+    threshold: 148,
+
+    useHudFrame: true,
+    hudFrameStyle: 'archive-frame',
+    hudFrameOpacity: 0.76,
+    hudFrameColor: '#b8f7ff',
+    hudFrameShowGrid: true,
+    hudFrameShowLabels: true,
+    hudFrameShowCornerMarks: true,
+
+    useDataOverlay: true,
+    dataOverlayMode: 'image-info',
+    dataOverlayDensity: 18,
+    dataOverlayFontSize: 9,
+    dataOverlayOpacity: 0.34,
+    dataOverlayColor: '#b8f7ff',
+
+    useScanlines: true,
+    scanlineIntensity: 0.18,
+
+    useNoise: true,
+    noiseAmount: 9
   })
 ];
