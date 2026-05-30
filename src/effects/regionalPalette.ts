@@ -49,6 +49,8 @@ type RandomZoneBand = {
   zoneIndex: number;
 };
 
+type RandomZoneRowIndex = RandomZoneBand[][];
+
 const hexToRgb = (hex: string): RgbColor => {
   return {
     r: parseInt(hex.slice(1, 3), 16),
@@ -590,10 +592,12 @@ const createRandomZoneBands = (
 const getRandomZoneIndex = (
   x: number,
   y: number,
-  bands: RandomZoneBand[],
+  rowIndex: RandomZoneRowIndex,
   fallbackZoneCount: number,
   seed: number
 ) => {
+  const bands = rowIndex[y] ?? [];
+
   for (let i = 0; i < bands.length; i++) {
     const band = bands[i];
 
@@ -615,6 +619,27 @@ const getRandomZoneIndex = (
   const value = Math.abs(Math.sin(hash) * 43758.5453123);
 
   return Math.floor((value - Math.floor(value)) * fallbackZoneCount);
+};
+
+const createRandomZoneRowIndex = (
+  bands: RandomZoneBand[],
+  height: number
+): RandomZoneRowIndex => {
+  const rowIndex = Array.from(
+    { length: height },
+    () => [] as RandomZoneBand[]
+  );
+
+  for (const band of bands) {
+    const yStart = Math.max(0, Math.floor(band.yStart));
+    const yEnd = Math.min(height, Math.ceil(band.yEnd));
+
+    for (let y = yStart; y < yEnd; y++) {
+      rowIndex[y].push(band);
+    }
+  }
+
+  return rowIndex;
 };
 
 export const applyRegionalPalette = (
@@ -677,6 +702,11 @@ export const applyRegionalPalette = (
         )
       : [];
 
+  const randomZoneRowIndex =
+    options.mode === 'random-zones'
+      ? createRandomZoneRowIndex(randomZoneBands, height)
+      : [];
+
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
@@ -722,7 +752,7 @@ export const applyRegionalPalette = (
         zoneIndex = getRandomZoneIndex(
           x,
           y,
-          randomZoneBands,
+          randomZoneRowIndex,
           zonePalettes.length,
           randomSeed
         );

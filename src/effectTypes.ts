@@ -6,6 +6,7 @@ import type {
 import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
+import type { MotionSmearDirection } from './effects/motionSmear';
 import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
   PosterTextFont,
@@ -68,6 +69,18 @@ export type EffectValues = {
   glitchWidth: number;
   glitchOverrideDither: boolean;
   edgeGlitchOnly: boolean;
+
+  useCodecDamage: boolean;
+  codecDamageBlockSize: number;
+  codecDamageAmount: number;
+  codecDamageChromaShift: number;
+  codecDamageColorDepth: number;
+
+  useMotionSmear: boolean;
+  motionSmearDirection: MotionSmearDirection;
+  motionSmearLength: number;
+  motionSmearDecay: number;
+  motionSmearThreshold: number;
 
   useChromatic: boolean;
   chromaticOffset: number;
@@ -201,6 +214,18 @@ export type EffectSetters = {
   setGlitchWidth: Setter<number>;
   setGlitchOverrideDither: Setter<boolean>;
   setEdgeGlitchOnly: Setter<boolean>;
+
+  setUseCodecDamage: Setter<boolean>;
+  setCodecDamageBlockSize: Setter<number>;
+  setCodecDamageAmount: Setter<number>;
+  setCodecDamageChromaShift: Setter<number>;
+  setCodecDamageColorDepth: Setter<number>;
+
+  setUseMotionSmear: Setter<boolean>;
+  setMotionSmearDirection: Setter<MotionSmearDirection>;
+  setMotionSmearLength: Setter<number>;
+  setMotionSmearDecay: Setter<number>;
+  setMotionSmearThreshold: Setter<number>;
 
   setUseChromatic: Setter<boolean>;
   setChromaticOffset: Setter<number>;

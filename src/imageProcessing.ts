@@ -1,5 +1,6 @@
 import { applyAscii } from './effects/ascii';
 import { applyChromatic } from './effects/chromatic';
+import { applyCodecDamage } from './effects/codecDamage';
 import { applyDataOverlay } from './effects/dataOverlay';
 import { applyDithering } from './effects/dither';
 import { applyHudFrame } from './effects/hudFrame';
@@ -12,6 +13,7 @@ import { applyPsx } from './effects/psx';
 import { applyRegionalPalette } from './effects/regionalPalette';
 import { applyScanlines } from './effects/scanlines';
 import { applySignalWaves } from './effects/signalWaves';
+import { applyMotionSmear } from './effects/motionSmear';
 import type { EffectValues } from './effectTypes';
 import {
   createSeededRandom,
@@ -376,6 +378,32 @@ export function processImage({
     }
 
     ctx.putImageData(target, 0, 0);
+  }
+
+  if (
+    values.useCodecDamage &&
+    values.codecDamageAmount > 0
+  ) {
+    applyCodecDamage(ctx, width, height, {
+      blockSize: values.codecDamageBlockSize,
+      amount: values.codecDamageAmount,
+      chromaShift: values.codecDamageChromaShift,
+      colorDepth: values.codecDamageColorDepth,
+      random: createSeededRandom(activeSeed, 'codec-damage')
+    });
+  }
+
+  if (
+    values.useMotionSmear &&
+    values.motionSmearLength > 0
+  ) {
+    applyMotionSmear(ctx, width, height, {
+      direction: values.motionSmearDirection,
+      length: values.motionSmearLength,
+      decay: values.motionSmearDecay,
+      threshold: values.motionSmearThreshold,
+      random: createSeededRandom(activeSeed, 'motion-smear')
+    });
   }
 
   if (values.useChromatic && values.chromaticOffset > 0) {

@@ -2,6 +2,7 @@ import type { DitherMode } from './effects/dither';
 import type { PatternDitherShape } from './effects/patternDither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
+import type { MotionSmearDirection } from './effects/motionSmear';
 import type { SignalWavesMode } from './effects/signalWaves';
 import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
@@ -59,6 +60,18 @@ export interface EffectPreset {
   glitchWidth: number;
   glitchOverrideDither: boolean;
   edgeGlitchOnly: boolean;
+
+  useCodecDamage: boolean;
+  codecDamageBlockSize: number;
+  codecDamageAmount: number;
+  codecDamageChromaShift: number;
+  codecDamageColorDepth: number;
+
+  useMotionSmear: boolean;
+  motionSmearDirection: MotionSmearDirection;
+  motionSmearLength: number;
+  motionSmearDecay: number;
+  motionSmearThreshold: number;
 
   useChromatic: boolean;
   chromaticOffset: number;
@@ -192,6 +205,18 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   glitchWidth: 100,
   glitchOverrideDither: false,
   edgeGlitchOnly: true,
+
+  useCodecDamage: false,
+  codecDamageBlockSize: 18,
+  codecDamageAmount: 0.35,
+  codecDamageChromaShift: 3,
+  codecDamageColorDepth: 8,
+
+  useMotionSmear: false,
+  motionSmearDirection: 'horizontal',
+  motionSmearLength: 28,
+  motionSmearDecay: 0.55,
+  motionSmearThreshold: 128,
 
   useChromatic: false,
   chromaticOffset: 3,
@@ -1691,5 +1716,273 @@ export const PRESETS: EffectPreset[] = [
 
     useNoise: true,
     noiseAmount: 9
+  }),
+
+  createPreset('BLACKBOX TITLE CARD', {
+    usePanelLayout: true,
+    panelLayoutMode: 'center-diagnostics',
+    panelLayoutGap: 8,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#00ff99',
+    panelLayoutBackgroundColor: '#020805',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 58,
+
+    usePalette: true,
+    colorStart: '#020805',
+    colorEnd: '#00ff99',
+    steps: 5,
+
+    usePosterText: true,
+    posterTextContent: 'BLACKBOX',
+    posterTextX: 50,
+    posterTextY: 50,
+    posterTextFont: 'bahnschrift',
+    posterTextWeight: 800,
+    posterTextSize: 96,
+    posterTextTracking: 8,
+    posterTextOpacity: 0.74,
+    posterTextColor: '#00ff99',
+    posterTextGlitch: true,
+    posterTextMode: 'blend',
+
+    useDataOverlay: true,
+    dataOverlayMode: 'random-codes',
+    dataOverlayDensity: 18,
+    dataOverlayFontSize: 9,
+    dataOverlayOpacity: 0.28,
+    dataOverlayColor: '#00ff99',
+
+    useHudFrame: true,
+    hudFrameStyle: 'scan-frame',
+    hudFrameOpacity: 0.62,
+    hudFrameColor: '#00ff99',
+
+    useNoise: true,
+    noiseAmount: 12,
+
+    useScanlines: true,
+    scanlineIntensity: 0.18
+  }),
+
+  createPreset('CONTACT FAILURE', {
+    usePanelLayout: true,
+    panelLayoutMode: 'contact-sheet',
+    panelLayoutGap: 7,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#b8f7ff',
+    panelLayoutBackgroundColor: '#010305',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 82,
+    panelLayoutMirrorAlternate: true,
+
+    useRegionalPalette: true,
+    regionalPaletteMode: 'panel-layout-sync',
+    regionalPaletteRandomizeZones: true,
+    regionalPaletteRandomCellSize: 170,
+    regionalPaletteZoneChaos: 68,
+    regionalPaletteZones: [
+      {
+        startColor: '#020406',
+        endColor: '#b8f7ff',
+        steps: 4,
+        invert: false
+      },
+      {
+        startColor: '#050000',
+        endColor: '#ff003c',
+        steps: 4,
+        invert: false
+      },
+      {
+        startColor: '#000707',
+        endColor: '#00ff99',
+        steps: 4,
+        invert: false
+      },
+      {
+        startColor: '#080006',
+        endColor: '#ff00cc',
+        steps: 4,
+        invert: false
+      }
+    ],
+
+    usePixelSort: true,
+    pixelSortDirection: 'horizontal',
+    pixelSortMode: 'bright',
+    pixelSortThreshold: 126,
+    pixelSortAmount: 0.48,
+
+    useCodecDamage: true,
+    codecDamageBlockSize: 22,
+    codecDamageAmount: 0.46,
+    codecDamageChromaShift: 5,
+    codecDamageColorDepth: 7,
+
+    useDataOverlay: true,
+    dataOverlayMode: 'image-info',
+    dataOverlayDensity: 24,
+    dataOverlayFontSize: 8,
+    dataOverlayOpacity: 0.34,
+    dataOverlayColor: '#b8f7ff',
+
+    useNoise: true,
+    noiseAmount: 14
+  }),
+
+  createPreset('DATAMOSH BROADSIDE', {
+    usePanelLayout: true,
+    panelLayoutMode: 'broken-archive-wall',
+    panelLayoutGap: 10,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#ff00cc',
+    panelLayoutBackgroundColor: '#070007',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 88,
+    panelLayoutMirrorAlternate: true,
+
+    usePalette: true,
+    colorStart: '#050006',
+    colorEnd: '#ff00cc',
+    steps: 5,
+
+    useGlitch: true,
+    glitch: 22,
+    glitchChaos: 76,
+    glitchWidth: 64,
+    glitchOverrideDither: false,
+    edgeGlitchOnly: false,
+
+    useCodecDamage: true,
+    codecDamageBlockSize: 28,
+    codecDamageAmount: 0.62,
+    codecDamageChromaShift: 9,
+    codecDamageColorDepth: 5,
+
+    useMotionSmear: true,
+    motionSmearDirection: 'horizontal',
+    motionSmearLength: 72,
+    motionSmearDecay: 0.68,
+    motionSmearThreshold: 96,
+
+    usePosterText: true,
+    posterTextContent: 'DECAY',
+    posterTextX: 50,
+    posterTextY: 82,
+    posterTextFont: 'arial-black',
+    posterTextWeight: 900,
+    posterTextSize: 112,
+    posterTextTracking: 2,
+    posterTextOpacity: 0.64,
+    posterTextColor: '#ff00cc',
+    posterTextGlitch: true,
+    posterTextMode: 'blend',
+
+    useChromatic: true,
+    chromaticOffset: 8,
+
+    useNoise: true,
+    noiseAmount: 22
+  }),
+
+  createPreset('ORBITAL FILM STRIP', {
+    usePanelLayout: true,
+    panelLayoutMode: 'film-strip',
+    panelLayoutGap: 6,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#d6ff00',
+    panelLayoutBackgroundColor: '#050605',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 74,
+
+    useSignalWaves: true,
+    signalWavesMode: 'radar',
+    signalWavesFrequency: 18,
+    signalWavesAmplitude: 32,
+    signalWavesDensity: 16,
+    signalWavesOpacity: 0.58,
+    signalWavesColor: '#d6ff00',
+    signalWavesReactToImage: true,
+
+    usePatternDither: true,
+    patternDitherShape: 'circle',
+    patternDitherScale: 18,
+    patternDitherDensity: 64,
+    patternDitherOpacity: 0.44,
+    patternDitherColor: '#d6ff00',
+
+    usePosterText: true,
+    posterTextContent: 'ORBITAL',
+    posterTextX: 50,
+    posterTextY: 18,
+    posterTextFont: 'consolas',
+    posterTextWeight: 700,
+    posterTextSize: 54,
+    posterTextTracking: 12,
+    posterTextOpacity: 0.56,
+    posterTextColor: '#d6ff00',
+    posterTextGlitch: false,
+
+    useHudFrame: true,
+    hudFrameStyle: 'targeting-frame',
+    hudFrameOpacity: 0.58,
+    hudFrameColor: '#d6ff00'
+  }),
+
+  createPreset('CROSSFEED MONITOR', {
+    usePanelLayout: true,
+    panelLayoutMode: 'cross-layout',
+    panelLayoutGap: 9,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#00c8ff',
+    panelLayoutBackgroundColor: '#020407',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 66,
+
+    usePalette: true,
+    colorStart: '#020407',
+    colorEnd: '#00c8ff',
+    steps: 6,
+
+    usePixelSort: true,
+    pixelSortDirection: 'vertical',
+    pixelSortMode: 'dark',
+    pixelSortThreshold: 92,
+    pixelSortAmount: 0.42,
+
+    useMotionSmear: true,
+    motionSmearDirection: 'vertical',
+    motionSmearLength: 48,
+    motionSmearDecay: 0.48,
+    motionSmearThreshold: 108,
+
+    usePosterText: true,
+    posterTextContent: 'CROSSFEED',
+    posterTextX: 12,
+    posterTextY: 50,
+    posterTextVertical: true,
+    posterTextFont: 'lucida-console',
+    posterTextWeight: 700,
+    posterTextSize: 44,
+    posterTextTracking: 6,
+    posterTextOpacity: 0.72,
+    posterTextColor: '#00c8ff',
+    posterTextGlitch: true,
+
+    useDataOverlay: true,
+    dataOverlayMode: 'coordinates',
+    dataOverlayDensity: 16,
+    dataOverlayFontSize: 9,
+    dataOverlayOpacity: 0.28,
+    dataOverlayColor: '#00c8ff',
+
+    useScanlines: true,
+    scanlineIntensity: 0.16
   })
 ];

@@ -141,6 +141,22 @@ export function restoreEffectsSnapshot(
   setters.setGlitchOverrideDither(snapshot.glitchOverrideDither);
   setters.setEdgeGlitchOnly(snapshot.edgeGlitchOnly);
 
+  setters.setUseCodecDamage(snapshot.useCodecDamage);
+  setters.setCodecDamageBlockSize(snapshot.codecDamageBlockSize);
+  setters.setCodecDamageAmount(snapshot.codecDamageAmount);
+  setters.setCodecDamageChromaShift(
+    snapshot.codecDamageChromaShift
+  );
+  setters.setCodecDamageColorDepth(
+    snapshot.codecDamageColorDepth
+  );
+
+  setters.setUseMotionSmear(snapshot.useMotionSmear);
+  setters.setMotionSmearDirection(snapshot.motionSmearDirection);
+  setters.setMotionSmearLength(snapshot.motionSmearLength);
+  setters.setMotionSmearDecay(snapshot.motionSmearDecay);
+  setters.setMotionSmearThreshold(snapshot.motionSmearThreshold);
+
   setters.setUseChromatic(snapshot.useChromatic);
   setters.setChromaticOffset(snapshot.chromaticOffset);
 
@@ -297,6 +313,18 @@ export function clearEffectSettings(setters: EffectStateSetters) {
   setters.setGlitchOverrideDither(false);
   setters.setEdgeGlitchOnly(true);
 
+  setters.setUseCodecDamage(false);
+  setters.setCodecDamageBlockSize(18);
+  setters.setCodecDamageAmount(0.35);
+  setters.setCodecDamageChromaShift(3);
+  setters.setCodecDamageColorDepth(8);
+
+  setters.setUseMotionSmear(false);
+  setters.setMotionSmearDirection('horizontal');
+  setters.setMotionSmearLength(28);
+  setters.setMotionSmearDecay(0.55);
+  setters.setMotionSmearThreshold(128);
+
   setters.setUseChromatic(false);
   setters.setChromaticOffset(3);
 
@@ -451,6 +479,22 @@ export function applyEffectPreset(
   setters.setGlitchWidth(preset.glitchWidth);
   setters.setGlitchOverrideDither(preset.glitchOverrideDither);
   setters.setEdgeGlitchOnly(preset.edgeGlitchOnly);
+
+  setters.setUseCodecDamage(preset.useCodecDamage);
+  setters.setCodecDamageBlockSize(preset.codecDamageBlockSize);
+  setters.setCodecDamageAmount(preset.codecDamageAmount);
+  setters.setCodecDamageChromaShift(
+    preset.codecDamageChromaShift
+  );
+  setters.setCodecDamageColorDepth(
+    preset.codecDamageColorDepth
+  );
+
+  setters.setUseMotionSmear(preset.useMotionSmear);
+  setters.setMotionSmearDirection(preset.motionSmearDirection);
+  setters.setMotionSmearLength(preset.motionSmearLength);
+  setters.setMotionSmearDecay(preset.motionSmearDecay);
+  setters.setMotionSmearThreshold(preset.motionSmearThreshold);
 
   setters.setUseChromatic(preset.useChromatic);
   setters.setChromaticOffset(preset.chromaticOffset);

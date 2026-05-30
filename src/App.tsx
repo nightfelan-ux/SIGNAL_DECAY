@@ -27,6 +27,7 @@ import type {
 import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
+import type { MotionSmearDirection } from './effects/motionSmear';
 import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
   PosterTextFont,
@@ -48,6 +49,7 @@ import { UiColorInput } from './components/UiColorInput';
 
 type ExportFormat = 'png' | 'jpeg';
 type ExportDpi = 72 | 150 | 300;
+type ExportScale = 1 | 2 | 3 | 4;
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -84,6 +86,12 @@ function App() {
 
   const [exportDpi, setExportDpi] =
     useState<ExportDpi>(72);
+  const [exportScale, setExportScale] =
+    useState<ExportScale>(1);
+  const [
+    exportTransparentBackground,
+    setExportTransparentBackground
+  ] = useState(false);
 
   const [usePixelation, setUsePixelation] = useState(false);
   const [pixelSize, setPixelSize] = useState(4);
@@ -188,6 +196,38 @@ function App() {
   const [glitchOverrideDither, setGlitchOverrideDither] =
     useState(false);
   const [edgeGlitchOnly, setEdgeGlitchOnly] = useState(true);
+
+  const [useCodecDamage, setUseCodecDamage] =
+    useState(false);
+  const [
+    codecDamageBlockSize,
+    setCodecDamageBlockSize
+  ] = useState(18);
+  const [codecDamageAmount, setCodecDamageAmount] =
+    useState(0.35);
+  const [
+    codecDamageChromaShift,
+    setCodecDamageChromaShift
+  ] = useState(3);
+  const [
+    codecDamageColorDepth,
+    setCodecDamageColorDepth
+  ] = useState(8);
+
+  const [useMotionSmear, setUseMotionSmear] =
+    useState(false);
+  const [
+    motionSmearDirection,
+    setMotionSmearDirection
+  ] = useState<MotionSmearDirection>('horizontal');
+  const [motionSmearLength, setMotionSmearLength] =
+    useState(28);
+  const [motionSmearDecay, setMotionSmearDecay] =
+    useState(0.55);
+  const [
+    motionSmearThreshold,
+    setMotionSmearThreshold
+  ] = useState(128);
 
   const [useChromatic, setUseChromatic] = useState(false);
   const [chromaticOffset, setChromaticOffset] = useState(3);
@@ -403,7 +443,7 @@ function App() {
   const imageSizeInfo = useMemo(() => {
     if (!originalImage) return null;
 
-    const scale = exportDpi / 72;
+    const scale = (exportDpi / 72) * exportScale;
 
     return {
       sourceWidth: originalImage.width,
@@ -411,7 +451,7 @@ function App() {
       exportWidth: Math.round(originalImage.width * scale),
       exportHeight: Math.round(originalImage.height * scale)
     };
-  }, [originalImage, exportDpi]);
+  }, [originalImage, exportDpi, exportScale]);
 
   const activeSeed = useSeed ? seed : liveSeed;
 
@@ -460,6 +500,18 @@ function App() {
       glitchWidth,
       glitchOverrideDither,
       edgeGlitchOnly,
+
+      useCodecDamage,
+      codecDamageBlockSize,
+      codecDamageAmount,
+      codecDamageChromaShift,
+      codecDamageColorDepth,
+
+      useMotionSmear,
+      motionSmearDirection,
+      motionSmearLength,
+      motionSmearDecay,
+      motionSmearThreshold,
 
       useChromatic,
       chromaticOffset,
@@ -579,6 +631,16 @@ function App() {
       glitchWidth,
       glitchOverrideDither,
       edgeGlitchOnly,
+      useCodecDamage,
+      codecDamageBlockSize,
+      codecDamageAmount,
+      codecDamageChromaShift,
+      codecDamageColorDepth,
+      useMotionSmear,
+      motionSmearDirection,
+      motionSmearLength,
+      motionSmearDecay,
+      motionSmearThreshold,
       useChromatic,
       chromaticOffset,
       useAscii,
@@ -702,6 +764,18 @@ function App() {
       setGlitchOverrideDither,
       setEdgeGlitchOnly,
 
+      setUseCodecDamage,
+      setCodecDamageBlockSize,
+      setCodecDamageAmount,
+      setCodecDamageChromaShift,
+      setCodecDamageColorDepth,
+
+      setUseMotionSmear,
+      setMotionSmearDirection,
+      setMotionSmearLength,
+      setMotionSmearDecay,
+      setMotionSmearThreshold,
+
       setUseChromatic,
       setChromaticOffset,
 
@@ -823,7 +897,7 @@ function App() {
 
     if (!canvas) return;
 
-    const scale = exportDpi / 72;
+    const scale = (exportDpi / 72) * exportScale;
 
     const exportCanvas = document.createElement('canvas');
     const exportCtx = exportCanvas.getContext('2d');
@@ -835,7 +909,10 @@ function App() {
 
     exportCtx.imageSmoothingEnabled = false;
 
-    if (exportFormat === 'jpeg') {
+    if (
+      exportFormat === 'jpeg' ||
+      !exportTransparentBackground
+    ) {
       exportCtx.fillStyle = '#050505';
       exportCtx.fillRect(
         0,
@@ -866,15 +943,25 @@ function App() {
       exportFormat === 'jpeg' ? 0.95 : undefined;
 
     const link = document.createElement('a');
+    const presetSlug = selectedPresetName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'custom';
 
-    link.download = `entropy-engine-${exportDpi}dpi-${Date.now()}.${extension}`;
+    link.download = `signal-decay-${presetSlug}-${exportDpi}dpi-${exportScale}x-${Date.now()}.${extension}`;
     link.href =
       quality === undefined
         ? exportCanvas.toDataURL(mimeType)
         : exportCanvas.toDataURL(mimeType, quality);
 
     link.click();
-  }, [exportFormat, exportDpi]);
+  }, [
+    exportDpi,
+    exportFormat,
+    exportScale,
+    exportTransparentBackground,
+    selectedPresetName
+  ]);
 
   const applyPreset = useCallback((preset: EffectPreset) => {
     applyEffectPreset(preset, effectSetters);
@@ -1486,6 +1573,46 @@ function App() {
             ))}
           </div>
 
+          <div style={sliderLabelStyle}>SCALE</div>
+
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              marginTop: 10
+            }}
+          >
+            {([1, 2, 3, 4] as ExportScale[]).map((scale) => (
+              <button
+                key={scale}
+                onClick={() => {
+                  setExportScale(scale);
+                }}
+                style={{
+                  ...(exportScale === scale
+                    ? activeButtonStyle
+                    : buttonStyle),
+                  flex: 1,
+                  padding: 8
+                }}
+              >
+                {scale}X
+              </button>
+            ))}
+          </div>
+
+          {exportFormat === 'png' && (
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={exportTransparentBackground}
+                onChange={(checked) => {
+                  setExportTransparentBackground(checked);
+                }}
+                label="Transparent PNG"
+              />
+            </div>
+          )}
+
           {imageSizeInfo && (
             <div
               style={{
@@ -1547,6 +1674,52 @@ type EffectGroup =
   | 'structure'
   | 'overlay';
 
+const EFFECT_GROUP_STORAGE_KEY =
+  'signal-decay-effect-groups';
+
+const DEFAULT_EFFECT_GROUPS: Record<EffectGroup, boolean> = {
+  source: true,
+  tonal: false,
+  distortion: false,
+  structure: false,
+  overlay: false
+};
+
+const ALL_OPEN_EFFECT_GROUPS: Record<EffectGroup, boolean> = {
+  source: true,
+  tonal: true,
+  distortion: true,
+  structure: true,
+  overlay: true
+};
+
+const ALL_CLOSED_EFFECT_GROUPS: Record<EffectGroup, boolean> = {
+  source: false,
+  tonal: false,
+  distortion: false,
+  structure: false,
+  overlay: false
+};
+
+function getInitialEffectGroups() {
+  try {
+    const saved = window.localStorage.getItem(
+      EFFECT_GROUP_STORAGE_KEY
+    );
+
+    if (!saved) {
+      return DEFAULT_EFFECT_GROUPS;
+    }
+
+    return {
+      ...DEFAULT_EFFECT_GROUPS,
+      ...(JSON.parse(saved) as Partial<Record<EffectGroup, boolean>>)
+    };
+  } catch {
+    return DEFAULT_EFFECT_GROUPS;
+  }
+}
+
 function EffectSections({
   sectionStyle,
   sliderLabelStyle,
@@ -1558,19 +1731,20 @@ function EffectSections({
     useState(values.useDither || values.usePatternDither);
   const [openEffectGroups, setOpenEffectGroups] = useState<
     Record<EffectGroup, boolean>
-  >({
-    source: true,
-    tonal: false,
-    distortion: false,
-    structure: false,
-    overlay: false
-  });
+  >(getInitialEffectGroups);
 
   useEffect(() => {
     if (values.useDither || values.usePatternDither) {
       setIsDitherPanelOpen(true);
     }
   }, [values.useDither, values.usePatternDither]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      EFFECT_GROUP_STORAGE_KEY,
+      JSON.stringify(openEffectGroups)
+    );
+  }, [openEffectGroups]);
 
   const runWithoutPanelJump = (callback: () => void) => {
     const panel = document.querySelector(
@@ -1649,6 +1823,8 @@ function EffectSections({
       return [
         values.usePixelSort,
         values.useGlitch,
+        values.useCodecDamage,
+        values.useMotionSmear,
         values.useChromatic,
         values.useNoise,
         values.useScanlines
@@ -1730,6 +1906,56 @@ function EffectSections({
         flexDirection: 'column'
       }}
     >
+      <div
+        style={{
+          order: 0,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 8,
+          marginTop: 8
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setOpenEffectGroups(ALL_OPEN_EFFECT_GROUPS);
+          }}
+          style={{
+            background: '#07140d',
+            color: '#00ff99',
+            border: '1px solid #164d34',
+            padding: '7px 8px',
+            cursor: 'pointer',
+            fontFamily: "'Datatype', monospace",
+            fontSize: 11,
+            letterSpacing: 1,
+            borderRadius: 0
+          }}
+        >
+          EXPAND ALL
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setOpenEffectGroups(ALL_CLOSED_EFFECT_GROUPS);
+          }}
+          style={{
+            background: '#07140d',
+            color: '#00ff99',
+            border: '1px solid #164d34',
+            padding: '7px 8px',
+            cursor: 'pointer',
+            fontFamily: "'Datatype', monospace",
+            fontSize: 11,
+            letterSpacing: 1,
+            borderRadius: 0
+          }}
+        >
+          COLLAPSE ALL
+        </button>
+      </div>
+
       {renderGroupHeader(10, 'source', 'SOURCE / BASE')}
       {renderGroupHeader(20, 'tonal', 'TONAL / COLOR')}
       {renderGroupHeader(30, 'distortion', 'DISTORTION')}
@@ -2828,6 +3054,145 @@ function EffectSections({
 
       <div style={orderedSectionStyle(33, 'distortion')}>
         <UiCheckbox
+          checked={values.useCodecDamage}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseCodecDamage(checked);
+            });
+          }}
+          label="Codec Damage"
+        />
+
+        {values.useCodecDamage && (
+          <>
+            <div style={sliderLabelStyle}>BLOCK SIZE</div>
+
+            <UiSlider
+              min={4}
+              max={96}
+              step={1}
+              value={values.codecDamageBlockSize}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setCodecDamageBlockSize(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>AMOUNT</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.codecDamageAmount}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setCodecDamageAmount(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>CHROMA SHIFT</div>
+
+            <UiSlider
+              min={0}
+              max={24}
+              step={1}
+              value={values.codecDamageChromaShift}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setCodecDamageChromaShift(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>COLOR DEPTH</div>
+
+            <UiSlider
+              min={2}
+              max={32}
+              step={1}
+              value={values.codecDamageColorDepth}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setCodecDamageColorDepth(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={orderedSectionStyle(34, 'distortion')}>
+        <UiCheckbox
+          checked={values.useMotionSmear}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseMotionSmear(checked);
+            });
+          }}
+          label="Motion Smear"
+        />
+
+        {values.useMotionSmear && (
+          <>
+            <div style={sliderLabelStyle}>DIRECTION</div>
+
+            <UiSelect
+              value={values.motionSmearDirection}
+              options={[
+                { value: 'horizontal', label: 'HORIZONTAL' },
+                { value: 'vertical', label: 'VERTICAL' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setMotionSmearDirection(
+                  value as MotionSmearDirection
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>LENGTH</div>
+
+            <UiSlider
+              min={1}
+              max={160}
+              step={1}
+              value={values.motionSmearLength}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setMotionSmearLength(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>DECAY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.motionSmearDecay}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setMotionSmearDecay(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>THRESHOLD</div>
+
+            <UiSlider
+              min={0}
+              max={255}
+              step={1}
+              value={values.motionSmearThreshold}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setMotionSmearThreshold(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={orderedSectionStyle(35, 'distortion')}>
+        <UiCheckbox
           checked={values.useChromatic}
           onChange={(checked) => {
             runWithoutPanelJump(() => {
@@ -2922,7 +3287,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(34, 'distortion')}>
+      <div style={orderedSectionStyle(36, 'distortion')}>
         <UiCheckbox
           checked={values.useNoise}
           onChange={(checked) => {
@@ -2951,7 +3316,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(35, 'distortion')}>
+      <div style={orderedSectionStyle(37, 'distortion')}>
         <UiCheckbox
           checked={values.useScanlines}
           onChange={(checked) => {
