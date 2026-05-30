@@ -15,6 +15,28 @@ export function createRandom(seed: number): RandomGenerator {
   };
 }
 
+export function deriveSeed(
+  baseSeed: number,
+  salt: string | number
+) {
+  const text = String(salt);
+  let value = baseSeed >>> 0;
+
+  for (let i = 0; i < text.length; i++) {
+    value ^= text.charCodeAt(i);
+    value = Math.imul(value, 16777619);
+  }
+
+  return value >>> 0;
+}
+
+export function createSeededRandom(
+  baseSeed: number,
+  salt: string | number
+) {
+  return createRandom(deriveSeed(baseSeed, salt));
+}
+
 export function createSeed() {
   return Math.floor(Math.random() * 999999999);
 }

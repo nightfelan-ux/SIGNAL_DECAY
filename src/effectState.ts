@@ -172,6 +172,20 @@ export function restoreEffectsSnapshot(
   setters.setDataOverlayColor(snapshot.dataOverlayColor);
   setters.setDataOverlayCustomText(snapshot.dataOverlayCustomText);
 
+  setters.setUsePosterText(snapshot.usePosterText);
+  setters.setPosterTextContent(snapshot.posterTextContent);
+  setters.setPosterTextX(snapshot.posterTextX);
+  setters.setPosterTextY(snapshot.posterTextY);
+  setters.setPosterTextVertical(snapshot.posterTextVertical);
+  setters.setPosterTextFont(snapshot.posterTextFont);
+  setters.setPosterTextWeight(snapshot.posterTextWeight);
+  setters.setPosterTextSize(snapshot.posterTextSize);
+  setters.setPosterTextTracking(snapshot.posterTextTracking);
+  setters.setPosterTextOpacity(snapshot.posterTextOpacity);
+  setters.setPosterTextColor(snapshot.posterTextColor);
+  setters.setPosterTextGlitch(snapshot.posterTextGlitch);
+  setters.setPosterTextMode(snapshot.posterTextMode);
+
   setters.setUseHudFrame(snapshot.useHudFrame);
   setters.setHudFrameStyle(snapshot.hudFrameStyle);
   setters.setHudFrameOpacity(snapshot.hudFrameOpacity);
@@ -309,6 +323,20 @@ export function clearEffectSettings(setters: EffectStateSetters) {
   setters.setDataOverlayOpacity(0.45);
   setters.setDataOverlayColor('#00ff99');
   setters.setDataOverlayCustomText('SIGNAL UNSTABLE');
+
+  setters.setUsePosterText(false);
+  setters.setPosterTextContent('SIGNAL DECAY');
+  setters.setPosterTextX(50);
+  setters.setPosterTextY(50);
+  setters.setPosterTextVertical(false);
+  setters.setPosterTextFont('consolas');
+  setters.setPosterTextWeight(700);
+  setters.setPosterTextSize(88);
+  setters.setPosterTextTracking(4);
+  setters.setPosterTextOpacity(0.75);
+  setters.setPosterTextColor('#00ff99');
+  setters.setPosterTextGlitch(false);
+  setters.setPosterTextMode('blend');
 
   setters.setUseHudFrame(false);
   setters.setHudFrameStyle('scan-frame');
@@ -471,6 +499,20 @@ export function applyEffectPreset(
   setters.setDataOverlayOpacity(preset.dataOverlayOpacity);
   setters.setDataOverlayColor(preset.dataOverlayColor);
   setters.setDataOverlayCustomText(preset.dataOverlayCustomText);
+
+  setters.setUsePosterText(preset.usePosterText);
+  setters.setPosterTextContent(preset.posterTextContent);
+  setters.setPosterTextX(preset.posterTextX);
+  setters.setPosterTextY(preset.posterTextY);
+  setters.setPosterTextVertical(preset.posterTextVertical);
+  setters.setPosterTextFont(preset.posterTextFont);
+  setters.setPosterTextWeight(preset.posterTextWeight);
+  setters.setPosterTextSize(preset.posterTextSize);
+  setters.setPosterTextTracking(preset.posterTextTracking);
+  setters.setPosterTextOpacity(preset.posterTextOpacity);
+  setters.setPosterTextColor(preset.posterTextColor);
+  setters.setPosterTextGlitch(preset.posterTextGlitch);
+  setters.setPosterTextMode(preset.posterTextMode);
 
   setters.setUseHudFrame(preset.useHudFrame);
   setters.setHudFrameStyle(preset.hudFrameStyle);

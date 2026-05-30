@@ -1,10 +1,13 @@
+import { createRandom } from '../utils/random';
+
 export function applyNoise(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   amount: number,
-  random: () => number = Math.random
+  random?: () => number
 ) {
+  const seededRandom = random ?? createRandom(123456);
   const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
 
@@ -17,7 +20,7 @@ export function applyNoise(
   const maxNoise = 120 * strength;
 
   for (let i = 0; i < data.length; i += 4) {
-    const noise = (random() - 0.5) * maxNoise;
+    const noise = (seededRandom() - 0.5) * maxNoise;
 
     data[i] = clamp(data[i] + noise);
     data[i + 1] = clamp(data[i + 1] + noise);

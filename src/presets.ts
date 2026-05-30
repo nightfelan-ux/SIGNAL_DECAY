@@ -5,6 +5,10 @@ import type { HudFrameStyle } from './effects/hudFrame';
 import type { SignalWavesMode } from './effects/signalWaves';
 import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
+  PosterTextFont,
+  PosterTextMode,
+} from './effects/posterText';
+import type {
   RegionalPaletteMode,
   RegionalPaletteZone
 } from './effects/regionalPalette';
@@ -93,6 +97,20 @@ export interface EffectPreset {
   dataOverlayOpacity: number;
   dataOverlayColor: string;
   dataOverlayCustomText: string;
+
+  usePosterText: boolean;
+  posterTextContent: string;
+  posterTextX: number;
+  posterTextY: number;
+  posterTextVertical: boolean;
+  posterTextFont: PosterTextFont;
+  posterTextWeight: number;
+  posterTextSize: number;
+  posterTextTracking: number;
+  posterTextOpacity: number;
+  posterTextColor: string;
+  posterTextGlitch: boolean;
+  posterTextMode: PosterTextMode;
 
   useHudFrame: boolean;
   hudFrameStyle: HudFrameStyle;
@@ -212,6 +230,20 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   dataOverlayOpacity: 0.45,
   dataOverlayColor: '#00ff99',
   dataOverlayCustomText: 'SIGNAL UNSTABLE',
+
+  usePosterText: false,
+  posterTextContent: 'SIGNAL DECAY',
+  posterTextX: 50,
+  posterTextY: 50,
+  posterTextVertical: false,
+  posterTextFont: 'consolas',
+  posterTextWeight: 700,
+  posterTextSize: 88,
+  posterTextTracking: 4,
+  posterTextOpacity: 0.75,
+  posterTextColor: '#00ff99',
+  posterTextGlitch: false,
+  posterTextMode: 'blend',
 
   useHudFrame: false,
   hudFrameStyle: 'scan-frame',

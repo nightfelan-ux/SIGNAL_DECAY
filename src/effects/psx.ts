@@ -1,3 +1,5 @@
+import { createRandom } from '../utils/random';
+
 type PsxOptions = {
   resolutionScale: number;
   colorLevels: number;
@@ -24,6 +26,7 @@ export function applyPsx(
   const blockSize = clamp(options.blockSize, 4, 64);
   const compositeBlur = clamp(options.compositeBlur, 0, 6);
   const chromaBleed = clamp(options.chromaBleed, 0, 8);
+  const random = options.random ?? createRandom(123456);
 
   applyLowResolution(
     ctx,
@@ -40,7 +43,7 @@ export function applyPsx(
       warpAmount,
       jitterAmount,
       blockSize,
-      options.random ?? Math.random
+      random
     );
   }
 

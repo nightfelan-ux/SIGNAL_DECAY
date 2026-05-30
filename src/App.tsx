@@ -28,6 +28,10 @@ import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
 import type { PanelLayoutMode } from './effects/panelLayout';
+import type {
+  PosterTextFont,
+  PosterTextMode,
+} from './effects/posterText';
 import type { PatternDitherShape } from './effects/patternDither';
 import type {
   RegionalPaletteMode,
@@ -232,6 +236,29 @@ function App() {
     useState('#00ff99');
   const [dataOverlayCustomText, setDataOverlayCustomText] =
     useState('SIGNAL UNSTABLE');
+
+  const [usePosterText, setUsePosterText] = useState(false);
+  const [posterTextContent, setPosterTextContent] =
+    useState('SIGNAL DECAY');
+  const [posterTextX, setPosterTextX] = useState(50);
+  const [posterTextY, setPosterTextY] = useState(50);
+  const [posterTextVertical, setPosterTextVertical] =
+    useState(false);
+  const [posterTextFont, setPosterTextFont] =
+    useState<PosterTextFont>('consolas');
+  const [posterTextWeight, setPosterTextWeight] =
+    useState(700);
+  const [posterTextSize, setPosterTextSize] = useState(88);
+  const [posterTextTracking, setPosterTextTracking] =
+    useState(4);
+  const [posterTextOpacity, setPosterTextOpacity] =
+    useState(0.75);
+  const [posterTextColor, setPosterTextColor] =
+    useState('#00ff99');
+  const [posterTextGlitch, setPosterTextGlitch] =
+    useState(false);
+  const [posterTextMode, setPosterTextMode] =
+    useState<PosterTextMode>('blend');
 
   const [useHudFrame, setUseHudFrame] = useState(false);
   const [hudFrameStyle, setHudFrameStyle] =
@@ -491,6 +518,20 @@ function App() {
       dataOverlayColor,
       dataOverlayCustomText,
 
+      usePosterText,
+      posterTextContent,
+      posterTextX,
+      posterTextY,
+      posterTextVertical,
+      posterTextFont,
+      posterTextWeight,
+      posterTextSize,
+      posterTextTracking,
+      posterTextOpacity,
+      posterTextColor,
+      posterTextGlitch,
+      posterTextMode,
+
       useHudFrame,
       hudFrameStyle,
       hudFrameOpacity,
@@ -587,6 +628,19 @@ function App() {
       dataOverlayOpacity,
       dataOverlayColor,
       dataOverlayCustomText,
+      usePosterText,
+      posterTextContent,
+      posterTextX,
+      posterTextY,
+      posterTextVertical,
+      posterTextFont,
+      posterTextWeight,
+      posterTextSize,
+      posterTextTracking,
+      posterTextOpacity,
+      posterTextColor,
+      posterTextGlitch,
+      posterTextMode,
       useHudFrame,
       hudFrameStyle,
       hudFrameOpacity,
@@ -704,6 +758,20 @@ function App() {
       setDataOverlayOpacity,
       setDataOverlayColor,
       setDataOverlayCustomText,
+
+      setUsePosterText,
+      setPosterTextContent,
+      setPosterTextX,
+      setPosterTextY,
+      setPosterTextVertical,
+      setPosterTextFont,
+      setPosterTextWeight,
+      setPosterTextSize,
+      setPosterTextTracking,
+      setPosterTextOpacity,
+      setPosterTextColor,
+      setPosterTextGlitch,
+      setPosterTextMode,
 
       setUseHudFrame,
       setHudFrameStyle,
@@ -2827,6 +2895,205 @@ function EffectSections({
                   markAsCustom();
                   setters.setDataOverlayColor(value);
                 }}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.usePosterText}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUsePosterText(checked);
+            });
+          }}
+          label="Poster Text"
+        />
+
+        {values.usePosterText && (
+          <>
+            <div style={sliderLabelStyle}>TEXT</div>
+
+            <input
+              className="ui-number-input"
+              value={values.posterTextContent}
+              onChange={(event) => {
+                markAsCustom();
+                setters.setPosterTextContent(
+                  event.target.value
+                );
+              }}
+              style={{
+                width: '100%',
+                marginTop: 6,
+                border: '1px solid #164d34'
+              }}
+              spellCheck={false}
+            />
+
+            <div style={sliderLabelStyle}>FONT</div>
+
+            <UiSelect
+              value={values.posterTextFont}
+              options={[
+                { value: 'consolas', label: 'CONSOLAS' },
+                { value: 'lucida-console', label: 'LUCIDA CONSOLE' },
+                { value: 'courier-new', label: 'COURIER NEW' },
+                { value: 'bahnschrift', label: 'BAHNSCHRIFT' },
+                { value: 'arial-black', label: 'ARIAL BLACK' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextFont(
+                  value as PosterTextFont
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>WEIGHT</div>
+
+            <UiSlider
+              min={100}
+              max={900}
+              step={100}
+              value={values.posterTextWeight}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextWeight(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>ORIENTATION</div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 10,
+                marginTop: 8
+              }}
+            >
+              <UiCheckbox
+                checked={!values.posterTextVertical}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setPosterTextVertical(!checked);
+                }}
+                label="Horizontal"
+              />
+
+              <UiCheckbox
+                checked={values.posterTextVertical}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setPosterTextVertical(checked);
+                }}
+                label="Vertical"
+              />
+            </div>
+
+            <div style={sliderLabelStyle}>X POSITION</div>
+
+            <UiSlider
+              min={0}
+              max={100}
+              step={1}
+              value={values.posterTextX}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextX(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>Y POSITION</div>
+
+            <UiSlider
+              min={0}
+              max={100}
+              step={1}
+              value={values.posterTextY}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextY(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>SIZE</div>
+
+            <UiSlider
+              min={12}
+              max={220}
+              step={1}
+              value={values.posterTextSize}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextSize(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>TRACKING</div>
+
+            <UiSlider
+              min={0}
+              max={48}
+              step={1}
+              value={values.posterTextTracking}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextTracking(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>OPACITY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.posterTextOpacity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextOpacity(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.posterTextMode}
+              options={[
+                { value: 'blend', label: 'BLEND' },
+                { value: 'replace', label: 'REPLACE' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextMode(
+                  value as PosterTextMode
+                );
+              }}
+            />
+
+            <div style={{ marginTop: 12 }}>
+              <UiColorInput
+                label="COLOR"
+                value={values.posterTextColor}
+                onChange={(value) => {
+                  markAsCustom();
+                  setters.setPosterTextColor(value);
+                }}
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.posterTextGlitch}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setPosterTextGlitch(checked);
+                }}
+                label="Glitch Text"
               />
             </div>
           </>

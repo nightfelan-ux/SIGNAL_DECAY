@@ -7,6 +7,10 @@ import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
 import type { PanelLayoutMode } from './effects/panelLayout';
+import type {
+  PosterTextFont,
+  PosterTextMode,
+} from './effects/posterText';
 import type { PatternDitherShape } from './effects/patternDither';
 import type {
   RegionalPaletteMode,
@@ -121,6 +125,20 @@ export type EffectValues = {
   dataOverlayOpacity: number;
   dataOverlayColor: string;
   dataOverlayCustomText: string;
+
+  usePosterText: boolean;
+  posterTextContent: string;
+  posterTextX: number;
+  posterTextY: number;
+  posterTextVertical: boolean;
+  posterTextFont: PosterTextFont;
+  posterTextWeight: number;
+  posterTextSize: number;
+  posterTextTracking: number;
+  posterTextOpacity: number;
+  posterTextColor: string;
+  posterTextGlitch: boolean;
+  posterTextMode: PosterTextMode;
 
   useHudFrame: boolean;
   hudFrameStyle: HudFrameStyle;
@@ -240,6 +258,20 @@ export type EffectSetters = {
   setDataOverlayOpacity: Setter<number>;
   setDataOverlayColor: Setter<string>;
   setDataOverlayCustomText: Setter<string>;
+
+  setUsePosterText: Setter<boolean>;
+  setPosterTextContent: Setter<string>;
+  setPosterTextX: Setter<number>;
+  setPosterTextY: Setter<number>;
+  setPosterTextVertical: Setter<boolean>;
+  setPosterTextFont: Setter<PosterTextFont>;
+  setPosterTextWeight: Setter<number>;
+  setPosterTextSize: Setter<number>;
+  setPosterTextTracking: Setter<number>;
+  setPosterTextOpacity: Setter<number>;
+  setPosterTextColor: Setter<string>;
+  setPosterTextGlitch: Setter<boolean>;
+  setPosterTextMode: Setter<PosterTextMode>;
 
   setUseHudFrame: Setter<boolean>;
   setHudFrameStyle: Setter<HudFrameStyle>;

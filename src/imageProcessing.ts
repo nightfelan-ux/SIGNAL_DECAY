@@ -5,6 +5,7 @@ import { applyDithering } from './effects/dither';
 import { applyHudFrame } from './effects/hudFrame';
 import { applyNoise } from './effects/noise';
 import { applyPanelLayout } from './effects/panelLayout';
+import { applyPosterText } from './effects/posterText';
 import { applyPatternDither } from './effects/patternDither';
 import { applyPixelSort } from './effects/pixelSort';
 import { applyPsx } from './effects/psx';
@@ -12,7 +13,10 @@ import { applyRegionalPalette } from './effects/regionalPalette';
 import { applyScanlines } from './effects/scanlines';
 import { applySignalWaves } from './effects/signalWaves';
 import type { EffectValues } from './effectTypes';
-import { createRandom } from './utils/random';
+import {
+  createSeededRandom,
+  deriveSeed
+} from './utils/random';
 
 type RgbColor = {
   r: number;
@@ -147,8 +151,6 @@ export function processImage({
 
   if (!ctx) return;
 
-  const random = createRandom(activeSeed);
-
   const width = originalImage.width;
   const height = originalImage.height;
 
@@ -216,7 +218,7 @@ export function processImage({
       blockSize: values.psxBlockSize,
       compositeBlur: values.psxCompositeBlur,
       chromaBleed: values.psxChromaBleed,
-      random
+      random: createSeededRandom(activeSeed, 'psx')
     });
   }
 
@@ -255,7 +257,10 @@ export function processImage({
       randomizeZones: values.regionalPaletteRandomizeZones,
       randomCellSize: values.regionalPaletteRandomCellSize,
       randomZoneChaos: values.regionalPaletteZoneChaos,
-      randomSeed: values.regionalPaletteZoneSeed
+      randomSeed: deriveSeed(
+        activeSeed,
+        `regional-palette-${values.regionalPaletteZoneSeed}`
+      )
     });
   } else {
     if (values.usePalette && !values.useDither) {
@@ -282,6 +287,7 @@ export function processImage({
   const processedCopy = ctx.getImageData(0, 0, width, height);
 
   if (values.useGlitch && values.glitch > 0) {
+    const glitchRandom = createSeededRandom(activeSeed, 'glitch');
     const target = ctx.getImageData(0, 0, width, height);
 
     const source = values.glitchOverrideDither
@@ -291,7 +297,7 @@ export function processImage({
     const strips = calcStrips(
       values.glitchChaos,
       values.glitchWidth,
-      random
+      glitchRandom
     );
 
     const stripHeight = Math.max(
@@ -312,7 +318,7 @@ export function processImage({
       const xEnd = Math.min(width, xStart + xWidth);
 
       const shift = Math.round(
-        (random() - 0.5) * values.glitch * 8
+        (glitchRandom() - 0.5) * values.glitch * 8
       );
 
       for (let y = yStart; y < yEnd; y++) {
@@ -427,12 +433,18 @@ export function processImage({
       panX: values.panelLayoutPanX,
       panY: values.panelLayoutPanY,
       mirrorAlternate: values.panelLayoutMirrorAlternate,
-      seed: activeSeed
+      seed: deriveSeed(activeSeed, 'panel-layout')
     });
   }
 
   if (values.useNoise && values.noiseAmount > 0) {
-    applyNoise(ctx, width, height, values.noiseAmount, random);
+    applyNoise(
+      ctx,
+      width,
+      height,
+      values.noiseAmount,
+      createSeededRandom(activeSeed, 'noise')
+    );
   }
 
   if (values.useScanlines && values.scanlineIntensity > 0) {
@@ -452,7 +464,25 @@ export function processImage({
       opacity: values.dataOverlayOpacity,
       color: values.dataOverlayColor,
       customText: values.dataOverlayCustomText,
-      seed: activeSeed
+      seed: deriveSeed(activeSeed, 'data-overlay')
+    });
+  }
+
+  if (values.usePosterText) {
+    applyPosterText(ctx, width, height, {
+      text: values.posterTextContent,
+      x: values.posterTextX,
+      y: values.posterTextY,
+      vertical: values.posterTextVertical,
+      font: values.posterTextFont,
+      weight: values.posterTextWeight,
+      size: values.posterTextSize,
+      tracking: values.posterTextTracking,
+      opacity: values.posterTextOpacity,
+      color: values.posterTextColor,
+      glitch: values.posterTextGlitch,
+      mode: values.posterTextMode,
+      seed: deriveSeed(activeSeed, 'poster-text')
     });
   }
 
