@@ -5,7 +5,8 @@ export type RegionalPaletteMode =
   | 'horizontal-split'
   | 'grid-2x2'
   | 'panel-layout-sync'
-  | 'random-cells';
+  | 'random-cells'
+  | 'random-zones';
 
 export type RegionalPaletteZone = {
   startColor: string;
@@ -21,6 +22,7 @@ export type RegionalPaletteOptions = {
   panelLayoutGap?: number;
   randomizeZones?: boolean;
   randomCellSize?: number;
+  randomZoneChaos?: number;
   randomSeed?: number;
 };
 
@@ -38,6 +40,14 @@ type Rect = {
 };
 
 type RandomGenerator = () => number;
+
+type RandomZoneBand = {
+  yStart: number;
+  yEnd: number;
+  xStart: number;
+  xEnd: number;
+  zoneIndex: number;
+};
 
 const hexToRgb = (hex: string): RgbColor => {
   return {
@@ -314,7 +324,6 @@ const getPanelSyncZoneIndex = (
 const getRandomCellZoneIndex = (
   x: number,
   y: number,
-  width: number,
   cellSize: number,
   zoneCount: number,
   seed: number
@@ -334,6 +343,120 @@ const getRandomCellZoneIndex = (
   return Math.floor(
     (value - Math.floor(value)) * zoneCount
   );
+};
+
+const createRandomZoneBands = (
+  width: number,
+  height: number,
+  zoneCount: number,
+  cellSize: number,
+  chaos: number,
+  seed: number
+) => {
+  const random = createRandom(seed);
+  const chaosAmount = Math.max(0, Math.min(1, chaos / 100));
+  const minBandHeight = Math.max(
+    18,
+    Math.round(cellSize * (0.85 - chaosAmount * 0.45))
+  );
+  const maxBandHeight = Math.max(
+    minBandHeight + 1,
+    Math.round(cellSize * (1.15 + chaosAmount * 1.2))
+  );
+  const bands: RandomZoneBand[] = [];
+
+  let y = 0;
+
+  while (y < height) {
+    const bandHeight = Math.min(
+      height - y,
+      Math.round(minBandHeight + random() * (maxBandHeight - minBandHeight))
+    );
+
+    const baseSliceCount = Math.max(
+      1,
+      Math.round(width / Math.max(1, cellSize * (1.2 - chaosAmount * 0.55)))
+    );
+
+    const sliceCount = Math.max(
+      1,
+      Math.round(baseSliceCount + random() * (1 + chaosAmount * 3))
+    );
+
+    let x = 0;
+
+    for (let i = 0; i < sliceCount; i++) {
+      const remaining = width - x;
+      const minSliceWidth = Math.max(
+        24,
+        Math.round(cellSize * (0.72 - chaosAmount * 0.35))
+      );
+      const sliceWidth =
+        i === sliceCount - 1
+          ? remaining
+          : Math.min(
+              remaining,
+              Math.round(
+                minSliceWidth +
+                  random() *
+                    cellSize *
+                    (0.85 + chaosAmount * 2.1)
+              )
+            );
+
+      const drift = Math.round(
+        (random() - 0.5) * cellSize * chaosAmount
+      );
+      const bleed = Math.round(
+        random() * cellSize * (0.2 + chaosAmount * 0.85)
+      );
+
+      bands.push({
+        yStart: y,
+        yEnd: y + bandHeight,
+        xStart: Math.max(0, x + drift),
+        xEnd: Math.min(width, x + sliceWidth + bleed),
+        zoneIndex: Math.floor(random() * zoneCount)
+      });
+
+      x += sliceWidth;
+      if (x >= width) break;
+    }
+
+    y += Math.max(1, bandHeight);
+  }
+
+  return bands;
+};
+
+const getRandomZoneIndex = (
+  x: number,
+  y: number,
+  bands: RandomZoneBand[],
+  fallbackZoneCount: number,
+  seed: number
+) => {
+  for (let i = 0; i < bands.length; i++) {
+    const band = bands[i];
+
+    if (
+      y >= band.yStart &&
+      y < band.yEnd &&
+      x >= band.xStart &&
+      x < band.xEnd
+    ) {
+      return band.zoneIndex;
+    }
+  }
+
+  const hash =
+    x * 1597334677 +
+    y * 3812015801 +
+    seed * 958689;
+
+  const value = Math.abs(Math.sin(hash) * 43758.5453123);
+
+  return Math.floor((value - Math.floor(value)) * fallbackZoneCount);
 };
 
 export const applyRegionalPalette = (
@@ -379,6 +502,22 @@ export const applyRegionalPalette = (
     16,
     options.randomCellSize ?? 96
   );
+  const randomZoneChaos = Math.max(
+    0,
+    Math.min(100, options.randomZoneChaos ?? 55)
+  );
+
+  const randomZoneBands =
+    options.mode === 'random-zones'
+      ? createRandomZoneBands(
+          width,
+          height,
+          zonePalettes.length,
+          randomCellSize,
+          randomZoneChaos,
+          randomSeed
+        )
+      : [];
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -417,8 +556,15 @@ export const applyRegionalPalette = (
         zoneIndex = getRandomCellZoneIndex(
           x,
           y,
-          width,
           randomCellSize,
+          zonePalettes.length,
+          randomSeed
+        );
+      } else if (options.mode === 'random-zones') {
+        zoneIndex = getRandomZoneIndex(
+          x,
+          y,
+          randomZoneBands,
           zonePalettes.length,
           randomSeed
         );

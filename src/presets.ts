@@ -3,6 +3,11 @@ import type { PatternDitherShape } from './effects/patternDither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
 import type { SignalWavesMode } from './effects/signalWaves';
+import type { PanelLayoutMode } from './effects/panelLayout';
+import type {
+  RegionalPaletteMode,
+  RegionalPaletteZone
+} from './effects/regionalPalette';
 
 export interface EffectPreset {
   name: string;
@@ -31,6 +36,14 @@ export interface EffectPreset {
   colorEnd: string;
   steps: number;
   swapPaletteColors: boolean;
+
+  useRegionalPalette: boolean;
+  regionalPaletteMode: RegionalPaletteMode;
+  regionalPaletteZones: RegionalPaletteZone[];
+  regionalPaletteRandomizeZones: boolean;
+  regionalPaletteRandomCellSize: number;
+  regionalPaletteZoneChaos: number;
+  regionalPaletteZoneSeed: number;
 
   useDither: boolean;
   ditherMode: DitherMode;
@@ -90,6 +103,19 @@ export interface EffectPreset {
   hudFrameShowCornerMarks: boolean;
   hudFrameSafeArea: number;
 
+  usePanelLayout: boolean;
+  panelLayoutMode: PanelLayoutMode;
+  panelLayoutGap: number;
+  panelLayoutBorderWidth: number;
+  panelLayoutBorderColor: string;
+  panelLayoutBackgroundColor: string;
+  panelLayoutPanelOpacity: number;
+  panelLayoutRandomCrop: boolean;
+  panelLayoutCropIntensity: number;
+  panelLayoutPanX: number;
+  panelLayoutPanY: number;
+  panelLayoutMirrorAlternate: boolean;
+
   useNoise: boolean;
   noiseAmount: number;
 
@@ -122,6 +148,21 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   colorEnd: '#00ff00',
   steps: 4,
   swapPaletteColors: false,
+
+  useRegionalPalette: false,
+  regionalPaletteMode: 'random-zones',
+  regionalPaletteZones: [
+    {
+      startColor: '#000000',
+      endColor: '#00ff99',
+      steps: 4,
+      invert: false
+    }
+  ],
+  regionalPaletteRandomizeZones: false,
+  regionalPaletteRandomCellSize: 180,
+  regionalPaletteZoneChaos: 55,
+  regionalPaletteZoneSeed: 12345,
 
   useDither: false,
   ditherMode: 'floyd-steinberg',
@@ -180,6 +221,19 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   hudFrameShowLabels: true,
   hudFrameShowCornerMarks: true,
   hudFrameSafeArea: 3,
+
+  usePanelLayout: false,
+  panelLayoutMode: 'side-panel',
+  panelLayoutGap: 10,
+  panelLayoutBorderWidth: 1,
+  panelLayoutBorderColor: '#00ff99',
+  panelLayoutBackgroundColor: '#050505',
+  panelLayoutPanelOpacity: 1,
+  panelLayoutRandomCrop: true,
+  panelLayoutCropIntensity: 55,
+  panelLayoutPanX: 0,
+  panelLayoutPanY: 0,
+  panelLayoutMirrorAlternate: false,
 
   useNoise: false,
   noiseAmount: 15,

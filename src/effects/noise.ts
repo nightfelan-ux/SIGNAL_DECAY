@@ -2,7 +2,8 @@ export function applyNoise(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  amount: number
+  amount: number,
+  random: () => number = Math.random
 ) {
   const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
@@ -16,7 +17,7 @@ export function applyNoise(
   const maxNoise = 120 * strength;
 
   for (let i = 0; i < data.length; i += 4) {
-    const noise = (Math.random() - 0.5) * maxNoise;
+    const noise = (random() - 0.5) * maxNoise;
 
     data[i] = clamp(data[i] + noise);
     data[i + 1] = clamp(data[i + 1] + noise);

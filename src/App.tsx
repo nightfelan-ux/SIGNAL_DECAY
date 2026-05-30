@@ -85,6 +85,8 @@ type PanelPresetFields = {
   panelLayoutPanelOpacity: number;
   panelLayoutRandomCrop: boolean;
   panelLayoutCropIntensity: number;
+  panelLayoutPanX: number;
+  panelLayoutPanY: number;
   panelLayoutMirrorAlternate: boolean;
 };
 
@@ -94,6 +96,7 @@ type RegionalPresetFields = {
   regionalPaletteZones: RegionalPaletteZone[];
   regionalPaletteRandomizeZones: boolean;
   regionalPaletteRandomCellSize: number;
+  regionalPaletteZoneChaos: number;
   regionalPaletteZoneSeed: number;
 };
 
@@ -128,6 +131,10 @@ type EffectsSnapshot = {
   useRegionalPalette: boolean;
   regionalPaletteMode: RegionalPaletteMode;
   regionalPaletteZones: RegionalPaletteZone[];
+  regionalPaletteRandomizeZones: boolean;
+  regionalPaletteRandomCellSize: number;
+  regionalPaletteZoneChaos: number;
+  regionalPaletteZoneSeed: number;
 
   useDither: boolean;
   ditherMode: DitherMode;
@@ -196,6 +203,8 @@ type EffectsSnapshot = {
   panelLayoutPanelOpacity: number;
   panelLayoutRandomCrop: boolean;
   panelLayoutCropIntensity: number;
+  panelLayoutPanX: number;
+  panelLayoutPanY: number;
   panelLayoutMirrorAlternate: boolean;
 
   useNoise: boolean;
@@ -325,6 +334,7 @@ function App() {
 
   const [useSeed, setUseSeed] = useState(false);
   const [seed, setSeed] = useState(123456);
+  const [liveSeed, setLiveSeed] = useState(createSeed());
 
   const [exportFormat, setExportFormat] =
     useState<ExportFormat>('png');
@@ -371,7 +381,7 @@ function App() {
   const [
     regionalPaletteMode,
     setRegionalPaletteMode
-  ] = useState<RegionalPaletteMode>('grid-2x2');
+  ] = useState<RegionalPaletteMode>('random-zones');
 
   const [
     regionalPaletteZones,
@@ -389,7 +399,12 @@ function App() {
   const [
     regionalPaletteRandomCellSize,
     setRegionalPaletteRandomCellSize
-  ] = useState(96);
+  ] = useState(180);
+
+  const [
+    regionalPaletteZoneChaos,
+    setRegionalPaletteZoneChaos
+  ] = useState(55);
 
   const [
     regionalPaletteZoneSeed,
@@ -553,6 +568,8 @@ function App() {
     panelLayoutCropIntensity,
     setPanelLayoutCropIntensity
   ] = useState(55);
+  const [panelLayoutPanX, setPanelLayoutPanX] = useState(0);
+  const [panelLayoutPanY, setPanelLayoutPanY] = useState(0);
   const [
     panelLayoutMirrorAlternate,
     setPanelLayoutMirrorAlternate
@@ -576,10 +593,10 @@ function App() {
     []
   );
 
-  const sliderLabelStyle = useMemo(
+  const sliderLabelStyle = useMemo<CSSProperties>(
     () => ({
       marginTop: 18,
-      marginBottom: -12,
+      marginBottom: 6,
       fontSize: 11,
       letterSpacing: 2,
       color: '#7c7c7c',
@@ -630,6 +647,8 @@ function App() {
     };
   }, [originalImage, exportDpi]);
 
+  const activeSeed = useSeed ? seed : liveSeed;
+
   const markAsCustom = useCallback(() => {
     setSelectedPresetName('CUSTOM');
   }, []);
@@ -672,6 +691,7 @@ function App() {
           })),
         regionalPaletteRandomizeZones,
         regionalPaletteRandomCellSize,
+        regionalPaletteZoneChaos,
         regionalPaletteZoneSeed,
 
         useDither,
@@ -741,6 +761,8 @@ function App() {
         panelLayoutPanelOpacity,
         panelLayoutRandomCrop,
         panelLayoutCropIntensity,
+        panelLayoutPanX,
+        panelLayoutPanY,
         panelLayoutMirrorAlternate,
 
         useNoise,
@@ -782,6 +804,7 @@ function App() {
       regionalPaletteZones,
       regionalPaletteRandomizeZones,
       regionalPaletteRandomCellSize,
+      regionalPaletteZoneChaos,
       regionalPaletteZoneSeed,
 
       useDither,
@@ -851,6 +874,8 @@ function App() {
       panelLayoutPanelOpacity,
       panelLayoutRandomCrop,
       panelLayoutCropIntensity,
+      panelLayoutPanX,
+      panelLayoutPanY,
       panelLayoutMirrorAlternate,
 
       useNoise,
@@ -907,6 +932,10 @@ function App() {
 
       setRegionalPaletteRandomCellSize(
         snapshot.regionalPaletteRandomCellSize
+      );
+
+      setRegionalPaletteZoneChaos(
+        snapshot.regionalPaletteZoneChaos
       );
 
       setRegionalPaletteZoneSeed(
@@ -1004,6 +1033,8 @@ function App() {
       setPanelLayoutCropIntensity(
         snapshot.panelLayoutCropIntensity
       );
+      setPanelLayoutPanX(snapshot.panelLayoutPanX);
+      setPanelLayoutPanY(snapshot.panelLayoutPanY);
       setPanelLayoutMirrorAlternate(
         snapshot.panelLayoutMirrorAlternate
       );
@@ -1048,14 +1079,15 @@ function App() {
     setSwapPaletteColors(false);
 
      setUseRegionalPalette(false);
-    setRegionalPaletteMode('grid-2x2');
+    setRegionalPaletteMode('random-zones');
     setRegionalPaletteZones(
       DEFAULT_REGIONAL_PALETTE_ZONES.map((zone) => ({
         ...zone
       }))
     );
     setRegionalPaletteRandomizeZones(false);
-    setRegionalPaletteRandomCellSize(96);
+    setRegionalPaletteRandomCellSize(180);
+    setRegionalPaletteZoneChaos(55);
     setRegionalPaletteZoneSeed(12345);
 
     setUseDither(false);
@@ -1125,6 +1157,8 @@ function App() {
     setPanelLayoutPanelOpacity(1);
     setPanelLayoutRandomCrop(true);
     setPanelLayoutCropIntensity(55);
+    setPanelLayoutPanX(0);
+    setPanelLayoutPanY(0);
     setPanelLayoutMirrorAlternate(false);
 
     setUseNoise(false);
@@ -1269,7 +1303,7 @@ function App() {
       regionalPreset.useRegionalPalette ?? false
     );
     setRegionalPaletteMode(
-      regionalPreset.regionalPaletteMode ?? 'grid-2x2'
+      regionalPreset.regionalPaletteMode ?? 'random-zones'
     );
     setRegionalPaletteZones(
       regionalPreset.regionalPaletteZones
@@ -1280,9 +1314,18 @@ function App() {
             ...zone
           }))
     );
-    setRegionalPaletteRandomizeZones(false);
-    setRegionalPaletteRandomCellSize(96);
-    setRegionalPaletteZoneSeed(12345);
+    setRegionalPaletteRandomizeZones(
+      regionalPreset.regionalPaletteRandomizeZones ?? false
+    );
+    setRegionalPaletteRandomCellSize(
+      regionalPreset.regionalPaletteRandomCellSize ?? 180
+    );
+    setRegionalPaletteZoneChaos(
+      regionalPreset.regionalPaletteZoneChaos ?? 55
+    );
+    setRegionalPaletteZoneSeed(
+      regionalPreset.regionalPaletteZoneSeed ?? 12345
+    );
 
     setUseDither(preset.useDither);
     setDitherMode(preset.ditherMode);
@@ -1377,6 +1420,8 @@ function App() {
     setPanelLayoutCropIntensity(
       panelPreset.panelLayoutCropIntensity ?? 55
     );
+    setPanelLayoutPanX(panelPreset.panelLayoutPanX ?? 0);
+    setPanelLayoutPanY(panelPreset.panelLayoutPanY ?? 0);
     setPanelLayoutMirrorAlternate(
       panelPreset.panelLayoutMirrorAlternate ?? false
     );
@@ -1399,7 +1444,7 @@ function App() {
 
     if (!ctx) return;
 
-    const random = createRandom(seed);
+    const random = createRandom(activeSeed);
 
     const width = originalImage.width;
     const height = originalImage.height;
@@ -1459,7 +1504,8 @@ function App() {
         ditherStrength: psxDitherStrength,
         blockSize: psxBlockSize,
         compositeBlur: psxCompositeBlur,
-        chromaBleed: psxChromaBleed
+        chromaBleed: psxChromaBleed,
+        random
       });
     }
 
@@ -1493,6 +1539,7 @@ function App() {
         panelLayoutGap,
         randomizeZones: regionalPaletteRandomizeZones,
         randomCellSize: regionalPaletteRandomCellSize,
+        randomZoneChaos: regionalPaletteZoneChaos,
         randomSeed: regionalPaletteZoneSeed
       });
     } else {
@@ -1656,13 +1703,15 @@ function App() {
         panelOpacity: panelLayoutPanelOpacity,
         randomCrop: panelLayoutRandomCrop,
         cropIntensity: panelLayoutCropIntensity,
+        panX: panelLayoutPanX,
+        panY: panelLayoutPanY,
         mirrorAlternate: panelLayoutMirrorAlternate,
-        seed
+        seed: activeSeed
       });
     }
 
     if (useNoise && noiseAmount > 0) {
-      applyNoise(ctx, width, height, noiseAmount);
+      applyNoise(ctx, width, height, noiseAmount, random);
     }
 
     if (useScanlines && scanlineIntensity > 0) {
@@ -1677,7 +1726,7 @@ function App() {
         opacity: dataOverlayOpacity,
         color: dataOverlayColor,
         customText: dataOverlayCustomText,
-        seed
+        seed: activeSeed
       });
     }
 
@@ -1695,7 +1744,7 @@ function App() {
   }, [
     originalImage,
     showOriginal,
-    seed,
+    activeSeed,
 
     usePixelation,
     pixelSize,
@@ -1727,6 +1776,7 @@ function App() {
     regionalPaletteZones,
     regionalPaletteRandomizeZones,
     regionalPaletteRandomCellSize,
+    regionalPaletteZoneChaos,
     regionalPaletteZoneSeed,
 
     useDither,
@@ -1780,6 +1830,8 @@ function App() {
     panelLayoutPanelOpacity,
     panelLayoutRandomCrop,
     panelLayoutCropIntensity,
+    panelLayoutPanX,
+    panelLayoutPanY,
     panelLayoutMirrorAlternate,
 
     useNoise,
@@ -1806,31 +1858,61 @@ function App() {
     hudFrameSafeArea
   ]);
 
+  const loadImageFile = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) return;
+
+    setSelectedFileName(file.name);
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const image = new Image();
+
+      image.onload = () => {
+        setOriginalImage(image);
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+        setShowOriginal(false);
+        setLiveSeed(createSeed());
+        setLastEffectsSnapshot(null);
+      };
+
+      image.src = reader.result as string;
+    };
+
+    reader.readAsDataURL(file);
+  }, []);
+
   const handleImageUpload = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
 
       if (!file) return;
 
-      setSelectedFileName(file.name);
+      loadImageFile(file);
+      event.target.value = '';
+    },
+    [loadImageFile]
+  );
 
-      const reader = new FileReader();
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
 
-      reader.onload = () => {
-        const image = new Image();
+      const file = Array.from(event.dataTransfer.files).find((item) =>
+        item.type.startsWith('image/')
+      );
 
-        image.onload = () => {
-          setOriginalImage(image);
-          setZoom(1);
-          setPan({ x: 0, y: 0 });
-          setShowOriginal(false);
-          setLastEffectsSnapshot(null);
-        };
+      if (!file) return;
 
-        image.src = reader.result as string;
-      };
+      loadImageFile(file);
+    },
+    [loadImageFile]
+  );
 
-      reader.readAsDataURL(file);
+  const handleDragOver = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
     },
     []
   );
@@ -1921,6 +2003,8 @@ function App() {
         onMouseMove={handleMouseMove}
         onMouseUp={stopPanning}
         onMouseLeave={stopPanning}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
         style={{
           flex: 1,
           height: '100vh',
@@ -1983,7 +2067,7 @@ function App() {
               letterSpacing: 3
             }}
           >
-            LOAD IMAGE
+            DROP IMAGE / LOAD IMAGE
           </div>
         )}
       </div>
@@ -2259,6 +2343,7 @@ function App() {
             regionalPaletteZones,
             regionalPaletteRandomizeZones,
             regionalPaletteRandomCellSize,
+            regionalPaletteZoneChaos,
             regionalPaletteZoneSeed,
 
             useDither,
@@ -2311,6 +2396,8 @@ function App() {
             panelLayoutPanelOpacity,
             panelLayoutRandomCrop,
             panelLayoutCropIntensity,
+            panelLayoutPanX,
+            panelLayoutPanY,
             panelLayoutMirrorAlternate,
 
             useNoise,
@@ -2367,6 +2454,7 @@ function App() {
             updateRegionalPaletteZone,
             setRegionalPaletteRandomizeZones,
             setRegionalPaletteRandomCellSize,
+            setRegionalPaletteZoneChaos,
             randomizeRegionalPaletteZoneMap,
 
             setUseDither,
@@ -2419,6 +2507,8 @@ function App() {
             setPanelLayoutPanelOpacity,
             setPanelLayoutRandomCrop,
             setPanelLayoutCropIntensity,
+            setPanelLayoutPanX,
+            setPanelLayoutPanY,
             setPanelLayoutMirrorAlternate,
 
             setUseNoise,
@@ -2770,7 +2860,9 @@ function EffectSections({
               ]}
               onChange={(value) => {
                 markAsCustom();
-                setters.setPixelSortDirection(value);
+                setters.setPixelSortDirection(
+                  value as 'horizontal' | 'vertical'
+                );
               }}
             />
 
@@ -2885,7 +2977,125 @@ function EffectSections({
         )}
       </div>
 
-      
+      <div style={sectionStyle}>
+        <UiCheckbox
+          checked={values.useRegionalPalette}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseRegionalPalette(checked);
+            });
+          }}
+          label="Regional Palette"
+        />
+
+        {values.useRegionalPalette && (
+          <>
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.regionalPaletteMode}
+              options={[
+                { value: 'random-zones', label: 'RANDOM ZONES' },
+                { value: 'random-cells', label: 'RANDOM CELLS' },
+                { value: 'vertical-split', label: 'VERTICAL SPLIT' },
+                { value: 'horizontal-split', label: 'HORIZONTAL SPLIT' },
+                { value: 'grid-2x2', label: 'GRID 2X2' },
+                { value: 'panel-layout-sync', label: 'PANEL SYNC' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setRegionalPaletteMode(
+                  value as RegionalPaletteMode
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>ZONE SIZE</div>
+
+            <UiSlider
+              min={64}
+              max={520}
+              step={1}
+              value={values.regionalPaletteRandomCellSize}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setRegionalPaletteRandomCellSize(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>ZONE CHAOS</div>
+
+            <UiSlider
+              min={0}
+              max={100}
+              step={1}
+              value={values.regionalPaletteZoneChaos}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setRegionalPaletteZoneChaos(value);
+              }}
+            />
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 10,
+                marginTop: 12
+              }}
+            >
+              {values.regionalPaletteZones.map(
+                (zone: RegionalPaletteZone, index: number) => (
+                  <div key={index}>
+                    <UiColorInput
+                      label={`ZONE ${index + 1}`}
+                      value={zone.endColor}
+                      onChange={(value) => {
+                        markAsCustom();
+                        setters.updateRegionalPaletteZone(index, {
+                          endColor: value
+                        });
+                      }}
+                    />
+                  </div>
+                )
+              )}
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.regionalPaletteRandomizeZones}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setRegionalPaletteRandomizeZones(checked);
+                }}
+                label="Shuffle Zones"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                markAsCustom();
+                setters.randomizeRegionalPaletteZoneMap();
+              }}
+              style={{
+                width: '100%',
+                marginTop: 12,
+                background: '#07140d',
+                color: '#00ff99',
+                border: '1px solid #164d34',
+                padding: 10,
+                cursor: 'pointer',
+                fontFamily: "'Datatype', monospace",
+                borderRadius: 0
+              }}
+            >
+              RANDOMIZE MAP
+            </button>
+          </>
+        )}
+      </div>
 
       <div style={sectionStyle}>
         <UiCheckbox
@@ -3324,6 +3534,32 @@ function EffectSections({
               onChange={(value) => {
                 markAsCustom();
                 setters.setPanelLayoutCropIntensity(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>PAN X</div>
+
+            <UiSlider
+              min={-100}
+              max={100}
+              step={1}
+              value={values.panelLayoutPanX}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPanelLayoutPanX(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>PAN Y</div>
+
+            <UiSlider
+              min={-100}
+              max={100}
+              step={1}
+              value={values.panelLayoutPanY}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPanelLayoutPanY(value);
               }}
             />
 

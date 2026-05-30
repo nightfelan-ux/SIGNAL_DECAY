@@ -14,6 +14,8 @@ export type PanelLayoutOptions = {
   panelOpacity: number;
   randomCrop: boolean;
   cropIntensity: number;
+  panX?: number;
+  panY?: number;
   mirrorAlternate: boolean;
   seed?: number;
 };
@@ -71,7 +73,9 @@ export function applyPanelLayout(
       canvasHeight: height,
       random,
       randomCrop: options.randomCrop,
-      cropIntensity
+      cropIntensity,
+      panX: options.panX ?? 0,
+      panY: options.panY ?? 0
     });
 
     ctx.save();
@@ -271,7 +275,9 @@ function createSourceRect({
   canvasHeight,
   random,
   randomCrop,
-  cropIntensity
+  cropIntensity,
+  panX,
+  panY
 }: {
   panel: Rect;
   canvasWidth: number;
@@ -279,6 +285,8 @@ function createSourceRect({
   random: RandomGenerator;
   randomCrop: boolean;
   cropIntensity: number;
+  panX: number;
+  panY: number;
 }): Rect {
   const panelRatio = panel.width / panel.height;
   const canvasRatio = canvasWidth / canvasHeight;
@@ -309,10 +317,14 @@ function createSourceRect({
   const randomY = random() * maxY;
 
   const mix = randomCrop ? cropIntensity / 100 : 0;
+  const baseX = centeredX * (1 - mix) + randomX * mix;
+  const baseY = centeredY * (1 - mix) + randomY * mix;
+  const offsetX = (clamp(panX, -100, 100) / 100) * maxX;
+  const offsetY = (clamp(panY, -100, 100) / 100) * maxY;
 
   return {
-    x: centeredX * (1 - mix) + randomX * mix,
-    y: centeredY * (1 - mix) + randomY * mix,
+    x: clamp(baseX + offsetX, 0, maxX),
+    y: clamp(baseY + offsetY, 0, maxY),
     width: sourceWidth,
     height: sourceHeight
   };

@@ -7,6 +7,7 @@ type PsxOptions = {
   blockSize: number;
   compositeBlur: number;
   chromaBleed: number;
+  random?: () => number;
 };
 
 export function applyPsx(
@@ -38,7 +39,8 @@ export function applyPsx(
       height,
       warpAmount,
       jitterAmount,
-      blockSize
+      blockSize,
+      options.random ?? Math.random
     );
   }
 
@@ -125,7 +127,8 @@ function applyBlockWarp(
   height: number,
   warpAmount: number,
   jitterAmount: number,
-  blockSize: number
+  blockSize: number,
+  random: () => number
 ) {
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d');
@@ -165,10 +168,10 @@ function applyBlockWarp(
         0.25;
 
       const randomX =
-        (Math.random() - 0.5) * jitterAmount;
+        (random() - 0.5) * jitterAmount;
 
       const randomY =
-        (Math.random() - 0.5) *
+        (random() - 0.5) *
         jitterAmount *
         0.35;
 
