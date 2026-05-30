@@ -1540,6 +1540,13 @@ type EffectSectionsProps = {
   setters: EffectSetters;
 };
 
+type EffectGroup =
+  | 'source'
+  | 'tonal'
+  | 'distortion'
+  | 'structure'
+  | 'overlay';
+
 function EffectSections({
   sectionStyle,
   sliderLabelStyle,
@@ -1549,6 +1556,21 @@ function EffectSections({
 }: EffectSectionsProps) {
   const [isDitherPanelOpen, setIsDitherPanelOpen] =
     useState(values.useDither || values.usePatternDither);
+  const [openEffectGroups, setOpenEffectGroups] = useState<
+    Record<EffectGroup, boolean>
+  >({
+    source: true,
+    tonal: false,
+    distortion: false,
+    structure: false,
+    overlay: false
+  });
+
+  useEffect(() => {
+    if (values.useDither || values.usePatternDither) {
+      setIsDitherPanelOpen(true);
+    }
+  }, [values.useDither, values.usePatternDither]);
 
   const runWithoutPanelJump = (callback: () => void) => {
     const panel = document.querySelector(
@@ -1571,9 +1593,154 @@ function EffectSections({
     });
   };
 
+  const toggleEffectGroup = (group: EffectGroup) => {
+    setOpenEffectGroups((current) => ({
+      ...current,
+      [group]: !current[group]
+    }));
+  };
+
+  const orderedSectionStyle = (
+    order: number,
+    group: EffectGroup
+  ): CSSProperties => ({
+    ...sectionStyle,
+    order,
+    display: openEffectGroups[group] ? undefined : 'none'
+  });
+
+  const effectGroupHeaderStyle = (
+    order: number
+  ): CSSProperties => ({
+    order,
+    marginTop: 18,
+    padding: '8px 0 6px',
+    fontSize: 11,
+    letterSpacing: 2,
+    color: '#00ff99',
+    border: 'none',
+    borderBottom: '1px solid #164d34',
+    background: 'transparent',
+    fontFamily: "'Datatype', monospace",
+    textAlign: 'left',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  });
+
+  const getActiveGroupCount = (group: EffectGroup) => {
+    if (group === 'source') {
+      return [
+        values.useDither || values.usePatternDither,
+        values.usePixelation,
+        values.usePsx
+      ].filter(Boolean).length;
+    }
+
+    if (group === 'tonal') {
+      return [
+        values.usePalette,
+        values.useRegionalPalette
+      ].filter(Boolean).length;
+    }
+
+    if (group === 'distortion') {
+      return [
+        values.usePixelSort,
+        values.useGlitch,
+        values.useChromatic,
+        values.useNoise,
+        values.useScanlines
+      ].filter(Boolean).length;
+    }
+
+    if (group === 'structure') {
+      return [
+        values.usePanelLayout,
+        values.useSignalWaves
+      ].filter(Boolean).length;
+    }
+
+    return [
+      values.useAscii,
+      values.useDataOverlay,
+      values.usePosterText,
+      values.useHudFrame
+    ].filter(Boolean).length;
+  };
+
+  const renderActiveGroupMarks = (count: number) => (
+    <span
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4
+      }}
+    >
+      {Array.from({ length: count }, (_, index) => (
+        <span
+          key={index}
+          style={{
+            width: 6,
+            height: 6,
+            background: '#00ff99',
+            boxShadow: '0 0 8px rgba(0, 255, 153, 0.55)'
+          }}
+        />
+      ))}
+    </span>
+  );
+
+  const renderGroupHeader = (
+    order: number,
+    group: EffectGroup,
+    label: string
+  ) => {
+    const activeCount = getActiveGroupCount(group);
+
+    return (
+      <button
+        type="button"
+        style={effectGroupHeaderStyle(order)}
+        onClick={() => {
+          toggleEffectGroup(group);
+        }}
+      >
+        <span>{label}</span>
+
+        <span
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          {renderActiveGroupMarks(activeCount)}
+          <span>{openEffectGroups[group] ? '-' : '+'}</span>
+        </span>
+      </button>
+    );
+  };
+
   return (
-    <>
-      <div style={sectionStyle}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      {renderGroupHeader(10, 'source', 'SOURCE / BASE')}
+      {renderGroupHeader(20, 'tonal', 'TONAL / COLOR')}
+      {renderGroupHeader(30, 'distortion', 'DISTORTION')}
+      {renderGroupHeader(40, 'structure', 'STRUCTURE')}
+      {renderGroupHeader(
+        50,
+        'overlay',
+        'TEXT / INTERFACE OVERLAY'
+      )}
+
+      <div style={orderedSectionStyle(12, 'source')}>
         <UiCheckbox
           checked={values.usePixelation}
           onChange={(checked) => {
@@ -1602,7 +1769,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(13, 'source')}>
         <UiCheckbox
           checked={values.usePsx}
           onChange={(checked) => {
@@ -1722,7 +1889,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(31, 'distortion')}>
         <UiCheckbox
           checked={values.usePixelSort}
           onChange={(checked) => {
@@ -1795,7 +1962,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(21, 'tonal')}>
         <UiCheckbox
           checked={values.usePalette}
           onChange={(checked) => {
@@ -1862,7 +2029,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(22, 'tonal')}>
         <UiCheckbox
           checked={values.useRegionalPalette}
           onChange={(checked) => {
@@ -2047,7 +2214,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(11, 'source')}>
         <UiCheckbox
           checked={isDitherPanelOpen}
           onChange={(checked) => {
@@ -2248,7 +2415,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(42, 'structure')}>
         <UiCheckbox
           checked={values.useSignalWaves}
           onChange={(checked) => {
@@ -2390,7 +2557,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(41, 'structure')}>
         <UiCheckbox
           checked={values.usePanelLayout}
           onChange={(checked) => {
@@ -2427,6 +2594,26 @@ function EffectSections({
                 {
                   value: 'split-scan',
                   label: 'SPLIT SCAN'
+                },
+                {
+                  value: 'film-strip',
+                  label: 'FILM STRIP'
+                },
+                {
+                  value: 'contact-sheet',
+                  label: 'CONTACT SHEET'
+                },
+                {
+                  value: 'center-diagnostics',
+                  label: 'CENTER DIAGNOSTICS'
+                },
+                {
+                  value: 'cross-layout',
+                  label: 'CROSS LAYOUT'
+                },
+                {
+                  value: 'broken-archive-wall',
+                  label: 'BROKEN ARCHIVE WALL'
                 }
               ]}
               onChange={(value) => {
@@ -2562,7 +2749,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(32, 'distortion')}>
         <UiCheckbox
           checked={values.useGlitch}
           onChange={(checked) => {
@@ -2639,7 +2826,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(33, 'distortion')}>
         <UiCheckbox
           checked={values.useChromatic}
           onChange={(checked) => {
@@ -2668,7 +2855,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(51, 'overlay')}>
         <UiCheckbox
           checked={values.useAscii}
           onChange={(checked) => {
@@ -2735,7 +2922,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(34, 'distortion')}>
         <UiCheckbox
           checked={values.useNoise}
           onChange={(checked) => {
@@ -2764,7 +2951,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(35, 'distortion')}>
         <UiCheckbox
           checked={values.useScanlines}
           onChange={(checked) => {
@@ -2793,7 +2980,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(52, 'overlay')}>
         <UiCheckbox
           checked={values.useDataOverlay}
           onChange={(checked) => {
@@ -2901,7 +3088,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(53, 'overlay')}>
         <UiCheckbox
           checked={values.usePosterText}
           onChange={(checked) => {
@@ -3100,7 +3287,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div style={orderedSectionStyle(54, 'overlay')}>
         <UiCheckbox
           checked={values.useHudFrame}
           onChange={(checked) => {
@@ -3205,7 +3392,7 @@ function EffectSections({
           </>
         )}
       </div>
-    </>
+    </div>
   );
 }
 

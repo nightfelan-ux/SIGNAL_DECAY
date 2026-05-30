@@ -3,7 +3,12 @@ export type PanelLayoutMode =
   | 'grid-2x2'
   | 'vertical-strips'
   | 'diagnostic-wall'
-  | 'split-scan';
+  | 'split-scan'
+  | 'film-strip'
+  | 'contact-sheet'
+  | 'center-diagnostics'
+  | 'cross-layout'
+  | 'broken-archive-wall';
 
 export type PanelLayoutOptions = {
   mode: PanelLayoutMode;
@@ -240,6 +245,161 @@ function createPanels(
         height: cellHeight
       };
     });
+  }
+
+  if (mode === 'film-strip') {
+    const count = 5;
+    const railHeight = Math.round(height * 0.14);
+    const panelHeight = height - railHeight * 2;
+    const panelWidth = (width - gap * (count - 1)) / count;
+
+    return Array.from({ length: count }, (_, index) => ({
+      x: index * (panelWidth + gap),
+      y: railHeight,
+      width: panelWidth,
+      height: panelHeight
+    }));
+  }
+
+  if (mode === 'contact-sheet') {
+    const columns = 4;
+    const rows = 3;
+    const cellWidth =
+      (width - gap * (columns - 1)) / columns;
+    const cellHeight =
+      (height - gap * (rows - 1)) / rows;
+
+    return Array.from(
+      { length: columns * rows },
+      (_, index) => {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+
+        return {
+          x: column * (cellWidth + gap),
+          y: row * (cellHeight + gap),
+          width: cellWidth,
+          height: cellHeight
+        };
+      }
+    );
+  }
+
+  if (mode === 'center-diagnostics') {
+    const sideWidth = Math.round(width * 0.22);
+    const centerWidth = width - sideWidth * 2 - gap * 2;
+    const smallHeight = (height - gap * 3) / 4;
+
+    return [
+      {
+        x: sideWidth + gap,
+        y: 0,
+        width: centerWidth,
+        height
+      },
+      ...Array.from({ length: 4 }, (_, index) => ({
+        x: 0,
+        y: index * (smallHeight + gap),
+        width: sideWidth,
+        height: smallHeight
+      })),
+      ...Array.from({ length: 4 }, (_, index) => ({
+        x: sideWidth + gap + centerWidth + gap,
+        y: index * (smallHeight + gap),
+        width: sideWidth,
+        height: smallHeight
+      }))
+    ];
+  }
+
+  if (mode === 'cross-layout') {
+    const centerWidth = Math.round(width * 0.46);
+    const centerHeight = Math.round(height * 0.46);
+    const sideWidth = (width - centerWidth - gap * 2) / 2;
+    const sideHeight = (height - centerHeight - gap * 2) / 2;
+    const centerX = sideWidth + gap;
+    const centerY = sideHeight + gap;
+
+    return [
+      {
+        x: centerX,
+        y: centerY,
+        width: centerWidth,
+        height: centerHeight
+      },
+      {
+        x: centerX,
+        y: 0,
+        width: centerWidth,
+        height: sideHeight
+      },
+      {
+        x: centerX,
+        y: centerY + centerHeight + gap,
+        width: centerWidth,
+        height: sideHeight
+      },
+      {
+        x: 0,
+        y: centerY,
+        width: sideWidth,
+        height: centerHeight
+      },
+      {
+        x: centerX + centerWidth + gap,
+        y: centerY,
+        width: sideWidth,
+        height: centerHeight
+      }
+    ];
+  }
+
+  if (mode === 'broken-archive-wall') {
+    const leftWidth = Math.round(width * 0.32);
+    const centerWidth = Math.round(width * 0.38);
+    const rightWidth = width - leftWidth - centerWidth - gap * 2;
+    const topHeight = Math.round(height * 0.28);
+    const midHeight = Math.round(height * 0.34);
+    const bottomHeight = height - topHeight - midHeight - gap * 2;
+
+    return [
+      {
+        x: 0,
+        y: 0,
+        width: leftWidth,
+        height: topHeight + midHeight + gap
+      },
+      {
+        x: leftWidth + gap,
+        y: 0,
+        width: centerWidth,
+        height: topHeight
+      },
+      {
+        x: leftWidth + gap + centerWidth + gap,
+        y: 0,
+        width: rightWidth,
+        height: topHeight + bottomHeight + gap
+      },
+      {
+        x: leftWidth + gap,
+        y: topHeight + gap,
+        width: centerWidth,
+        height: midHeight
+      },
+      {
+        x: 0,
+        y: topHeight + midHeight + gap * 2,
+        width: leftWidth + centerWidth + gap,
+        height: bottomHeight
+      },
+      {
+        x: leftWidth + gap + centerWidth + gap,
+        y: topHeight + bottomHeight + gap * 2,
+        width: rightWidth,
+        height: midHeight
+      }
+    ];
   }
 
   const topHeight = Math.round(height * 0.36);
