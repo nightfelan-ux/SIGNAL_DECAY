@@ -1,0 +1,258 @@
+import type {
+  Dispatch,
+  SetStateAction
+} from 'react';
+
+import type { DitherMode } from './effects/dither';
+import type { DataOverlayMode } from './effects/dataOverlay';
+import type { HudFrameStyle } from './effects/hudFrame';
+import type { PanelLayoutMode } from './effects/panelLayout';
+import type { PatternDitherShape } from './effects/patternDither';
+import type {
+  RegionalPaletteMode,
+  RegionalPaletteZone
+} from './effects/regionalPalette';
+import type { SignalWavesMode } from './effects/signalWaves';
+
+type Setter<T> = Dispatch<SetStateAction<T>>;
+
+export type PixelSortDirection = 'horizontal' | 'vertical';
+export type PixelSortMode = 'bright' | 'dark' | 'all';
+export type AsciiMode = 'overlay' | 'replace';
+
+export type EffectValues = {
+  usePixelation: boolean;
+  pixelSize: number;
+
+  usePsx: boolean;
+  psxResolutionScale: number;
+  psxColorLevels: number;
+  psxWarpAmount: number;
+  psxJitterAmount: number;
+  psxDitherStrength: number;
+  psxBlockSize: number;
+  psxCompositeBlur: number;
+  psxChromaBleed: number;
+
+  usePixelSort: boolean;
+  pixelSortDirection: PixelSortDirection;
+  pixelSortMode: PixelSortMode;
+  pixelSortThreshold: number;
+  pixelSortAmount: number;
+
+  usePalette: boolean;
+  colorStart: string;
+  colorEnd: string;
+  steps: number;
+  swapPaletteColors: boolean;
+
+  useRegionalPalette: boolean;
+  regionalPaletteMode: RegionalPaletteMode;
+  regionalPaletteZones: RegionalPaletteZone[];
+  regionalPaletteRandomizeZones: boolean;
+  regionalPaletteRandomCellSize: number;
+  regionalPaletteZoneChaos: number;
+  regionalPaletteZoneSeed: number;
+
+  useDither: boolean;
+  ditherMode: DitherMode;
+  threshold: number;
+
+  useGlitch: boolean;
+  glitch: number;
+  glitchChaos: number;
+  glitchWidth: number;
+  glitchOverrideDither: boolean;
+  edgeGlitchOnly: boolean;
+
+  useChromatic: boolean;
+  chromaticOffset: number;
+
+  useAscii: boolean;
+  asciiCellSize: number;
+  asciiOpacity: number;
+  asciiMode: AsciiMode;
+  asciiColor: string;
+
+  usePatternDither: boolean;
+  patternDitherShape: PatternDitherShape;
+  patternDitherScale: number;
+  patternDitherDensity: number;
+  patternDitherOpacity: number;
+  patternDitherColor: string;
+  patternDitherBackgroundColor: string;
+  patternDitherInvert: boolean;
+  patternDitherReplaceImage: boolean;
+
+  useSignalWaves: boolean;
+  signalWavesMode: SignalWavesMode;
+  signalWavesFrequency: number;
+  signalWavesAmplitude: number;
+  signalWavesDensity: number;
+  signalWavesOpacity: number;
+  signalWavesColor: string;
+  signalWavesBackgroundColor: string;
+  signalWavesReplaceImage: boolean;
+  signalWavesReactToImage: boolean;
+
+  usePanelLayout: boolean;
+  panelLayoutMode: PanelLayoutMode;
+  panelLayoutGap: number;
+  panelLayoutBorderWidth: number;
+  panelLayoutBorderColor: string;
+  panelLayoutBackgroundColor: string;
+  panelLayoutPanelOpacity: number;
+  panelLayoutRandomCrop: boolean;
+  panelLayoutCropIntensity: number;
+  panelLayoutPanX: number;
+  panelLayoutPanY: number;
+  panelLayoutMirrorAlternate: boolean;
+
+  useNoise: boolean;
+  noiseAmount: number;
+
+  useScanlines: boolean;
+  scanlineIntensity: number;
+
+  useDataOverlay: boolean;
+  dataOverlayMode: DataOverlayMode;
+  dataOverlayDensity: number;
+  dataOverlayFontSize: number;
+  dataOverlayOpacity: number;
+  dataOverlayColor: string;
+  dataOverlayCustomText: string;
+
+  useHudFrame: boolean;
+  hudFrameStyle: HudFrameStyle;
+  hudFrameOpacity: number;
+  hudFrameColor: string;
+  hudFrameShowGrid: boolean;
+  hudFrameShowLabels: boolean;
+  hudFrameShowCornerMarks: boolean;
+  hudFrameSafeArea: number;
+};
+
+export type EffectsSnapshot = EffectValues & {
+  selectedPresetName: string;
+};
+
+export type EffectSetters = {
+  setUsePixelation: Setter<boolean>;
+  setPixelSize: Setter<number>;
+
+  setUsePsx: Setter<boolean>;
+  setPsxResolutionScale: Setter<number>;
+  setPsxColorLevels: Setter<number>;
+  setPsxWarpAmount: Setter<number>;
+  setPsxJitterAmount: Setter<number>;
+  setPsxDitherStrength: Setter<number>;
+  setPsxBlockSize: Setter<number>;
+  setPsxCompositeBlur: Setter<number>;
+  setPsxChromaBleed: Setter<number>;
+
+  setUsePixelSort: Setter<boolean>;
+  setPixelSortDirection: Setter<PixelSortDirection>;
+  setPixelSortMode: Setter<PixelSortMode>;
+  setPixelSortThreshold: Setter<number>;
+  setPixelSortAmount: Setter<number>;
+
+  setUsePalette: Setter<boolean>;
+  setColorStart: Setter<string>;
+  setColorEnd: Setter<string>;
+  setSteps: Setter<number>;
+  setSwapPaletteColors: Setter<boolean>;
+
+  setUseRegionalPalette: Setter<boolean>;
+  setRegionalPaletteMode: Setter<RegionalPaletteMode>;
+  updateRegionalPaletteZone: (
+    index: number,
+    patch: Partial<RegionalPaletteZone>
+  ) => void;
+  setRegionalPaletteRandomizeZones: Setter<boolean>;
+  setRegionalPaletteRandomCellSize: Setter<number>;
+  setRegionalPaletteZoneChaos: Setter<number>;
+  randomizeRegionalPaletteZoneMap: () => void;
+
+  setUseDither: Setter<boolean>;
+  setDitherMode: Setter<DitherMode>;
+  setThreshold: Setter<number>;
+
+  setUseGlitch: Setter<boolean>;
+  setGlitch: Setter<number>;
+  setGlitchChaos: Setter<number>;
+  setGlitchWidth: Setter<number>;
+  setGlitchOverrideDither: Setter<boolean>;
+  setEdgeGlitchOnly: Setter<boolean>;
+
+  setUseChromatic: Setter<boolean>;
+  setChromaticOffset: Setter<number>;
+
+  setUseAscii: Setter<boolean>;
+  setAsciiCellSize: Setter<number>;
+  setAsciiOpacity: Setter<number>;
+  setAsciiMode: Setter<AsciiMode>;
+  setAsciiColor: Setter<string>;
+
+  setUsePatternDither: Setter<boolean>;
+  setPatternDitherShape: Setter<PatternDitherShape>;
+  setPatternDitherScale: Setter<number>;
+  setPatternDitherDensity: Setter<number>;
+  setPatternDitherOpacity: Setter<number>;
+  setPatternDitherColor: Setter<string>;
+  setPatternDitherBackgroundColor: Setter<string>;
+  setPatternDitherInvert: Setter<boolean>;
+  setPatternDitherReplaceImage: Setter<boolean>;
+
+  setUseSignalWaves: Setter<boolean>;
+  setSignalWavesMode: Setter<SignalWavesMode>;
+  setSignalWavesFrequency: Setter<number>;
+  setSignalWavesAmplitude: Setter<number>;
+  setSignalWavesDensity: Setter<number>;
+  setSignalWavesOpacity: Setter<number>;
+  setSignalWavesColor: Setter<string>;
+  setSignalWavesBackgroundColor: Setter<string>;
+  setSignalWavesReplaceImage: Setter<boolean>;
+  setSignalWavesReactToImage: Setter<boolean>;
+
+  setUsePanelLayout: Setter<boolean>;
+  setPanelLayoutMode: Setter<PanelLayoutMode>;
+  setPanelLayoutGap: Setter<number>;
+  setPanelLayoutBorderWidth: Setter<number>;
+  setPanelLayoutBorderColor: Setter<string>;
+  setPanelLayoutBackgroundColor: Setter<string>;
+  setPanelLayoutPanelOpacity: Setter<number>;
+  setPanelLayoutRandomCrop: Setter<boolean>;
+  setPanelLayoutCropIntensity: Setter<number>;
+  setPanelLayoutPanX: Setter<number>;
+  setPanelLayoutPanY: Setter<number>;
+  setPanelLayoutMirrorAlternate: Setter<boolean>;
+
+  setUseNoise: Setter<boolean>;
+  setNoiseAmount: Setter<number>;
+
+  setUseScanlines: Setter<boolean>;
+  setScanlineIntensity: Setter<number>;
+
+  setUseDataOverlay: Setter<boolean>;
+  setDataOverlayMode: Setter<DataOverlayMode>;
+  setDataOverlayDensity: Setter<number>;
+  setDataOverlayFontSize: Setter<number>;
+  setDataOverlayOpacity: Setter<number>;
+  setDataOverlayColor: Setter<string>;
+  setDataOverlayCustomText: Setter<string>;
+
+  setUseHudFrame: Setter<boolean>;
+  setHudFrameStyle: Setter<HudFrameStyle>;
+  setHudFrameOpacity: Setter<number>;
+  setHudFrameColor: Setter<string>;
+  setHudFrameShowGrid: Setter<boolean>;
+  setHudFrameShowLabels: Setter<boolean>;
+  setHudFrameShowCornerMarks: Setter<boolean>;
+  setHudFrameSafeArea: Setter<number>;
+};
+
+export type EffectStateSetters = EffectSetters & {
+  setSelectedPresetName: Setter<string>;
+  setRegionalPaletteZones: Setter<RegionalPaletteZone[]>;
+  setRegionalPaletteZoneSeed: Setter<number>;
+};

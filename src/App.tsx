@@ -7,309 +7,47 @@ import {
   type CSSProperties
 } from 'react';
 
-import {
-  applyDithering,
-  type DitherMode
-} from './effects/dither';
-
-import { applyScanlines } from './effects/scanlines';
-import { applyNoise } from './effects/noise';
-import { applyChromatic } from './effects/chromatic';
-import { applyAscii } from './effects/ascii';
-import { applyPsx } from './effects/psx';
-import { applyPixelSort } from './effects/pixelSort';
-
-import {
-  applyDataOverlay,
-  type DataOverlayMode
-} from './effects/dataOverlay';
-
-import {
-  applyHudFrame,
-  type HudFrameStyle
-} from './effects/hudFrame';
-
-import {
-  applyPatternDither,
-  type PatternDitherShape
-} from './effects/patternDither';
-
-import {
-  applySignalWaves,
-  type SignalWavesMode
-} from './effects/signalWaves';
-
-import {
-  applyPanelLayout,
-  type PanelLayoutMode
-} from './effects/panelLayout';
-
-import {
-  applyRegionalPalette,
-  type RegionalPaletteMode,
-  type RegionalPaletteZone
-} from './effects/regionalPalette';
-
 import { PRESETS, type EffectPreset } from './presets';
-import { createRandom, createSeed } from './utils/random';
+import {
+  applyEffectPreset,
+  clearEffectSettings,
+  createEffectsSnapshot as buildEffectsSnapshot,
+  DEFAULT_REGIONAL_PALETTE_ZONES,
+  restoreEffectsSnapshot as applyEffectsSnapshot
+} from './effectState';
+import type {
+  EffectSetters,
+  EffectStateSetters,
+  EffectValues,
+  EffectsSnapshot,
+  AsciiMode,
+  PixelSortDirection,
+  PixelSortMode
+} from './effectTypes';
+import type { DitherMode } from './effects/dither';
+import type { DataOverlayMode } from './effects/dataOverlay';
+import type { HudFrameStyle } from './effects/hudFrame';
+import type { PanelLayoutMode } from './effects/panelLayout';
+import type { PatternDitherShape } from './effects/patternDither';
+import type {
+  RegionalPaletteMode,
+  RegionalPaletteZone
+} from './effects/regionalPalette';
+import type { SignalWavesMode } from './effects/signalWaves';
+import { processImage as processCanvasImage } from './imageProcessing';
+import { createSeed } from './utils/random';
 
 import { UiCheckbox } from './components/UiCheckbox';
 import { UiSlider } from './components/UiSlider';
 import { UiSelect } from './components/UiSelect';
 import { UiColorInput } from './components/UiColorInput';
 
-type RgbColor = {
-  r: number;
-  g: number;
-  b: number;
-};
-
-type RandomGenerator = () => number;
-
-type GlitchStrip = {
-  active: boolean;
-  widthPct: number;
-  leftPct: number;
-};
-
 type ExportFormat = 'png' | 'jpeg';
 type ExportDpi = 72 | 150 | 300;
 
-type PanelPresetFields = {
-  usePanelLayout: boolean;
-  panelLayoutMode: PanelLayoutMode;
-  panelLayoutGap: number;
-  panelLayoutBorderWidth: number;
-  panelLayoutBorderColor: string;
-  panelLayoutBackgroundColor: string;
-  panelLayoutPanelOpacity: number;
-  panelLayoutRandomCrop: boolean;
-  panelLayoutCropIntensity: number;
-  panelLayoutPanX: number;
-  panelLayoutPanY: number;
-  panelLayoutMirrorAlternate: boolean;
-};
-
-type RegionalPresetFields = {
-  useRegionalPalette: boolean;
-  regionalPaletteMode: RegionalPaletteMode;
-  regionalPaletteZones: RegionalPaletteZone[];
-  regionalPaletteRandomizeZones: boolean;
-  regionalPaletteRandomCellSize: number;
-  regionalPaletteZoneChaos: number;
-  regionalPaletteZoneSeed: number;
-};
-
-type EffectsSnapshot = {
-  selectedPresetName: string;
-
-  usePixelation: boolean;
-  pixelSize: number;
-
-  usePsx: boolean;
-  psxResolutionScale: number;
-  psxColorLevels: number;
-  psxWarpAmount: number;
-  psxJitterAmount: number;
-  psxDitherStrength: number;
-  psxBlockSize: number;
-  psxCompositeBlur: number;
-  psxChromaBleed: number;
-
-  usePixelSort: boolean;
-  pixelSortDirection: 'horizontal' | 'vertical';
-  pixelSortMode: 'bright' | 'dark' | 'all';
-  pixelSortThreshold: number;
-  pixelSortAmount: number;
-
-  usePalette: boolean;
-  colorStart: string;
-  colorEnd: string;
-  steps: number;
-  swapPaletteColors: boolean;
-
-  useRegionalPalette: boolean;
-  regionalPaletteMode: RegionalPaletteMode;
-  regionalPaletteZones: RegionalPaletteZone[];
-  regionalPaletteRandomizeZones: boolean;
-  regionalPaletteRandomCellSize: number;
-  regionalPaletteZoneChaos: number;
-  regionalPaletteZoneSeed: number;
-
-  useDither: boolean;
-  ditherMode: DitherMode;
-  threshold: number;
-
-  useGlitch: boolean;
-  glitch: number;
-  glitchChaos: number;
-  glitchWidth: number;
-  glitchOverrideDither: boolean;
-  edgeGlitchOnly: boolean;
-
-  useChromatic: boolean;
-  chromaticOffset: number;
-
-  useAscii: boolean;
-  asciiCellSize: number;
-  asciiOpacity: number;
-  asciiMode: 'overlay' | 'replace';
-  asciiColor: string;
-
-  usePatternDither: boolean;
-  patternDitherShape: PatternDitherShape;
-  patternDitherScale: number;
-  patternDitherDensity: number;
-  patternDitherOpacity: number;
-  patternDitherColor: string;
-  patternDitherBackgroundColor: string;
-  patternDitherInvert: boolean;
-  patternDitherReplaceImage: boolean;
-
-  useDataOverlay: boolean;
-  dataOverlayMode: DataOverlayMode;
-  dataOverlayDensity: number;
-  dataOverlayFontSize: number;
-  dataOverlayOpacity: number;
-  dataOverlayColor: string;
-  dataOverlayCustomText: string;
-
-  useHudFrame: boolean;
-  hudFrameStyle: HudFrameStyle;
-  hudFrameOpacity: number;
-  hudFrameColor: string;
-  hudFrameShowGrid: boolean;
-  hudFrameShowLabels: boolean;
-  hudFrameShowCornerMarks: boolean;
-  hudFrameSafeArea: number;
-
-  useSignalWaves: boolean;
-  signalWavesMode: SignalWavesMode;
-  signalWavesFrequency: number;
-  signalWavesAmplitude: number;
-  signalWavesDensity: number;
-  signalWavesOpacity: number;
-  signalWavesColor: string;
-  signalWavesBackgroundColor: string;
-  signalWavesReplaceImage: boolean;
-  signalWavesReactToImage: boolean;
-
-  usePanelLayout: boolean;
-  panelLayoutMode: PanelLayoutMode;
-  panelLayoutGap: number;
-  panelLayoutBorderWidth: number;
-  panelLayoutBorderColor: string;
-  panelLayoutBackgroundColor: string;
-  panelLayoutPanelOpacity: number;
-  panelLayoutRandomCrop: boolean;
-  panelLayoutCropIntensity: number;
-  panelLayoutPanX: number;
-  panelLayoutPanY: number;
-  panelLayoutMirrorAlternate: boolean;
-
-  useNoise: boolean;
-  noiseAmount: number;
-
-  useScanlines: boolean;
-  scanlineIntensity: number;
-};
-
-const DEFAULT_REGIONAL_PALETTE_ZONES: RegionalPaletteZone[] = [
-  {
-    startColor: '#000000',
-    endColor: '#00ff99',
-    steps: 4,
-    invert: false
-  },
-  {
-    startColor: '#050505',
-    endColor: '#d6ff00',
-    steps: 4,
-    invert: false
-  },
-  {
-    startColor: '#000000',
-    endColor: '#00c8ff',
-    steps: 4,
-    invert: false
-  },
-  {
-    startColor: '#140014',
-    endColor: '#ff00cc',
-    steps: 4,
-    invert: false
-  }
-];
-
-const hexToRgb = (hex: string): RgbColor => {
-  return {
-    r: parseInt(hex.slice(1, 3), 16),
-    g: parseInt(hex.slice(3, 5), 16),
-    b: parseInt(hex.slice(5, 7), 16)
-  };
-};
-
-const generatePalette = (
-  start: string,
-  end: string,
-  count: number
-): RgbColor[] => {
-  const s = hexToRgb(start);
-  const e = hexToRgb(end);
-
-  return Array.from({ length: count }, (_, i) => {
-    const ratio = count > 1 ? i / (count - 1) : 0;
-
-    return {
-      r: Math.round(s.r + (e.r - s.r) * ratio),
-      g: Math.round(s.g + (e.g - s.g) * ratio),
-      b: Math.round(s.b + (e.b - s.b) * ratio)
-    };
-  });
-};
-
-const getBrightness = (
-  r: number,
-  g: number,
-  b: number
-) => {
-  return 0.299 * r + 0.587 * g + 0.114 * b;
-};
-
-const applyPaletteByBrightness = (
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  palette: RgbColor[]
-) => {
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const data = imageData.data;
-  const lastIndex = palette.length - 1;
-
-  for (let i = 0; i < data.length; i += 4) {
-    const brightness =
-      getBrightness(data[i], data[i + 1], data[i + 2]) / 255;
-
-    const paletteIndex = Math.max(
-      0,
-      Math.min(
-        lastIndex,
-        Math.round(brightness * lastIndex)
-      )
-    );
-
-    const color = palette[paletteIndex];
-
-    data[i] = color.r;
-    data[i + 1] = color.g;
-    data[i + 2] = color.b;
-  }
-
-  ctx.putImageData(imageData, 0, 0);
-};
-
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const previewAreaRef = useRef<HTMLDivElement>(null);
   const tempCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -324,6 +62,7 @@ function App() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
+  const [canPanPreview, setCanPanPreview] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
 
   const [selectedPresetName, setSelectedPresetName] =
@@ -360,9 +99,9 @@ function App() {
 
   const [usePixelSort, setUsePixelSort] = useState(false);
   const [pixelSortDirection, setPixelSortDirection] =
-    useState<'horizontal' | 'vertical'>('horizontal');
+    useState<PixelSortDirection>('horizontal');
   const [pixelSortMode, setPixelSortMode] =
-    useState<'bright' | 'dark' | 'all'>('bright');
+    useState<PixelSortMode>('bright');
   const [pixelSortThreshold, setPixelSortThreshold] =
     useState(160);
   const [pixelSortAmount, setPixelSortAmount] =
@@ -649,131 +388,8 @@ function App() {
 
   const activeSeed = useSeed ? seed : liveSeed;
 
-  const markAsCustom = useCallback(() => {
-    setSelectedPresetName('CUSTOM');
-  }, []);
-
-  const createEffectsSnapshot =
-    useCallback((): EffectsSnapshot => {
-      return {
-        selectedPresetName,
-
-        usePixelation,
-        pixelSize,
-
-        usePsx,
-        psxResolutionScale,
-        psxColorLevels,
-        psxWarpAmount,
-        psxJitterAmount,
-        psxDitherStrength,
-        psxBlockSize,
-        psxCompositeBlur,
-        psxChromaBleed,
-
-        usePixelSort,
-        pixelSortDirection,
-        pixelSortMode,
-        pixelSortThreshold,
-        pixelSortAmount,
-
-        usePalette,
-        colorStart,
-        colorEnd,
-        steps,
-        swapPaletteColors,
-
-        useRegionalPalette,
-        regionalPaletteMode,
-        regionalPaletteZones:
-          regionalPaletteZones.map((zone) => ({
-            ...zone
-          })),
-        regionalPaletteRandomizeZones,
-        regionalPaletteRandomCellSize,
-        regionalPaletteZoneChaos,
-        regionalPaletteZoneSeed,
-
-        useDither,
-        ditherMode,
-        threshold,
-
-        useGlitch,
-        glitch,
-        glitchChaos,
-        glitchWidth,
-        glitchOverrideDither,
-        edgeGlitchOnly,
-
-        useChromatic,
-        chromaticOffset,
-
-        useAscii,
-        asciiCellSize,
-        asciiOpacity,
-        asciiMode,
-        asciiColor,
-
-        usePatternDither,
-        patternDitherShape,
-        patternDitherScale,
-        patternDitherDensity,
-        patternDitherOpacity,
-        patternDitherColor,
-        patternDitherBackgroundColor,
-        patternDitherInvert,
-        patternDitherReplaceImage,
-
-        useDataOverlay,
-        dataOverlayMode,
-        dataOverlayDensity,
-        dataOverlayFontSize,
-        dataOverlayOpacity,
-        dataOverlayColor,
-        dataOverlayCustomText,
-
-        useHudFrame,
-        hudFrameStyle,
-        hudFrameOpacity,
-        hudFrameColor,
-        hudFrameShowGrid,
-        hudFrameShowLabels,
-        hudFrameShowCornerMarks,
-        hudFrameSafeArea,
-
-        useSignalWaves,
-        signalWavesMode,
-        signalWavesFrequency,
-        signalWavesAmplitude,
-        signalWavesDensity,
-        signalWavesOpacity,
-        signalWavesColor,
-        signalWavesBackgroundColor,
-        signalWavesReplaceImage,
-        signalWavesReactToImage,
-
-        usePanelLayout,
-        panelLayoutMode,
-        panelLayoutGap,
-        panelLayoutBorderWidth,
-        panelLayoutBorderColor,
-        panelLayoutBackgroundColor,
-        panelLayoutPanelOpacity,
-        panelLayoutRandomCrop,
-        panelLayoutCropIntensity,
-        panelLayoutPanX,
-        panelLayoutPanY,
-        panelLayoutMirrorAlternate,
-
-        useNoise,
-        noiseAmount,
-
-        useScanlines,
-        scanlineIntensity
-      };
-    }, [
-      selectedPresetName,
-
+  const effectValues = useMemo<EffectValues>(
+    () => ({
       usePixelation,
       pixelSize,
 
@@ -837,23 +453,6 @@ function App() {
       patternDitherInvert,
       patternDitherReplaceImage,
 
-      useDataOverlay,
-      dataOverlayMode,
-      dataOverlayDensity,
-      dataOverlayFontSize,
-      dataOverlayOpacity,
-      dataOverlayColor,
-      dataOverlayCustomText,
-
-      useHudFrame,
-      hudFrameStyle,
-      hudFrameOpacity,
-      hudFrameColor,
-      hudFrameShowGrid,
-      hudFrameShowLabels,
-      hudFrameShowCornerMarks,
-      hudFrameSafeArea,
-
       useSignalWaves,
       signalWavesMode,
       signalWavesFrequency,
@@ -882,291 +481,267 @@ function App() {
       noiseAmount,
 
       useScanlines,
-      scanlineIntensity
-    ]);
+      scanlineIntensity,
+
+      useDataOverlay,
+      dataOverlayMode,
+      dataOverlayDensity,
+      dataOverlayFontSize,
+      dataOverlayOpacity,
+      dataOverlayColor,
+      dataOverlayCustomText,
+
+      useHudFrame,
+      hudFrameStyle,
+      hudFrameOpacity,
+      hudFrameColor,
+      hudFrameShowGrid,
+      hudFrameShowLabels,
+      hudFrameShowCornerMarks,
+      hudFrameSafeArea
+    }),
+    [
+      usePixelation,
+      pixelSize,
+      usePsx,
+      psxResolutionScale,
+      psxColorLevels,
+      psxWarpAmount,
+      psxJitterAmount,
+      psxDitherStrength,
+      psxBlockSize,
+      psxCompositeBlur,
+      psxChromaBleed,
+      usePixelSort,
+      pixelSortDirection,
+      pixelSortMode,
+      pixelSortThreshold,
+      pixelSortAmount,
+      usePalette,
+      colorStart,
+      colorEnd,
+      steps,
+      swapPaletteColors,
+      useRegionalPalette,
+      regionalPaletteMode,
+      regionalPaletteZones,
+      regionalPaletteRandomizeZones,
+      regionalPaletteRandomCellSize,
+      regionalPaletteZoneChaos,
+      regionalPaletteZoneSeed,
+      useDither,
+      ditherMode,
+      threshold,
+      useGlitch,
+      glitch,
+      glitchChaos,
+      glitchWidth,
+      glitchOverrideDither,
+      edgeGlitchOnly,
+      useChromatic,
+      chromaticOffset,
+      useAscii,
+      asciiCellSize,
+      asciiOpacity,
+      asciiMode,
+      asciiColor,
+      usePatternDither,
+      patternDitherShape,
+      patternDitherScale,
+      patternDitherDensity,
+      patternDitherOpacity,
+      patternDitherColor,
+      patternDitherBackgroundColor,
+      patternDitherInvert,
+      patternDitherReplaceImage,
+      useSignalWaves,
+      signalWavesMode,
+      signalWavesFrequency,
+      signalWavesAmplitude,
+      signalWavesDensity,
+      signalWavesOpacity,
+      signalWavesColor,
+      signalWavesBackgroundColor,
+      signalWavesReplaceImage,
+      signalWavesReactToImage,
+      usePanelLayout,
+      panelLayoutMode,
+      panelLayoutGap,
+      panelLayoutBorderWidth,
+      panelLayoutBorderColor,
+      panelLayoutBackgroundColor,
+      panelLayoutPanelOpacity,
+      panelLayoutRandomCrop,
+      panelLayoutCropIntensity,
+      panelLayoutPanX,
+      panelLayoutPanY,
+      panelLayoutMirrorAlternate,
+      useNoise,
+      noiseAmount,
+      useScanlines,
+      scanlineIntensity,
+      useDataOverlay,
+      dataOverlayMode,
+      dataOverlayDensity,
+      dataOverlayFontSize,
+      dataOverlayOpacity,
+      dataOverlayColor,
+      dataOverlayCustomText,
+      useHudFrame,
+      hudFrameStyle,
+      hudFrameOpacity,
+      hudFrameColor,
+      hudFrameShowGrid,
+      hudFrameShowLabels,
+      hudFrameShowCornerMarks,
+      hudFrameSafeArea
+    ]
+  );
+
+  const effectSetters = useMemo<EffectStateSetters>(
+    () => ({
+      setSelectedPresetName,
+
+      setUsePixelation,
+      setPixelSize,
+
+      setUsePsx,
+      setPsxResolutionScale,
+      setPsxColorLevels,
+      setPsxWarpAmount,
+      setPsxJitterAmount,
+      setPsxDitherStrength,
+      setPsxBlockSize,
+      setPsxCompositeBlur,
+      setPsxChromaBleed,
+
+      setUsePixelSort,
+      setPixelSortDirection,
+      setPixelSortMode,
+      setPixelSortThreshold,
+      setPixelSortAmount,
+
+      setUsePalette,
+      setColorStart,
+      setColorEnd,
+      setSteps,
+      setSwapPaletteColors,
+
+      setUseRegionalPalette,
+      setRegionalPaletteMode,
+      setRegionalPaletteZones,
+      updateRegionalPaletteZone,
+      setRegionalPaletteRandomizeZones,
+      setRegionalPaletteRandomCellSize,
+      setRegionalPaletteZoneChaos,
+      setRegionalPaletteZoneSeed,
+      randomizeRegionalPaletteZoneMap,
+
+      setUseDither,
+      setDitherMode,
+      setThreshold,
+
+      setUseGlitch,
+      setGlitch,
+      setGlitchChaos,
+      setGlitchWidth,
+      setGlitchOverrideDither,
+      setEdgeGlitchOnly,
+
+      setUseChromatic,
+      setChromaticOffset,
+
+      setUseAscii,
+      setAsciiCellSize,
+      setAsciiOpacity,
+      setAsciiMode,
+      setAsciiColor,
+
+      setUsePatternDither,
+      setPatternDitherShape,
+      setPatternDitherScale,
+      setPatternDitherDensity,
+      setPatternDitherOpacity,
+      setPatternDitherColor,
+      setPatternDitherBackgroundColor,
+      setPatternDitherInvert,
+      setPatternDitherReplaceImage,
+
+      setUseSignalWaves,
+      setSignalWavesMode,
+      setSignalWavesFrequency,
+      setSignalWavesAmplitude,
+      setSignalWavesDensity,
+      setSignalWavesOpacity,
+      setSignalWavesColor,
+      setSignalWavesBackgroundColor,
+      setSignalWavesReplaceImage,
+      setSignalWavesReactToImage,
+
+      setUsePanelLayout,
+      setPanelLayoutMode,
+      setPanelLayoutGap,
+      setPanelLayoutBorderWidth,
+      setPanelLayoutBorderColor,
+      setPanelLayoutBackgroundColor,
+      setPanelLayoutPanelOpacity,
+      setPanelLayoutRandomCrop,
+      setPanelLayoutCropIntensity,
+      setPanelLayoutPanX,
+      setPanelLayoutPanY,
+      setPanelLayoutMirrorAlternate,
+
+      setUseNoise,
+      setNoiseAmount,
+
+      setUseScanlines,
+      setScanlineIntensity,
+
+      setUseDataOverlay,
+      setDataOverlayMode,
+      setDataOverlayDensity,
+      setDataOverlayFontSize,
+      setDataOverlayOpacity,
+      setDataOverlayColor,
+      setDataOverlayCustomText,
+
+      setUseHudFrame,
+      setHudFrameStyle,
+      setHudFrameOpacity,
+      setHudFrameColor,
+      setHudFrameShowGrid,
+      setHudFrameShowLabels,
+      setHudFrameShowCornerMarks,
+      setHudFrameSafeArea
+    }),
+    [
+      randomizeRegionalPaletteZoneMap,
+      updateRegionalPaletteZone
+    ]
+  );
+
+  const markAsCustom = useCallback(() => {
+    setSelectedPresetName('CUSTOM');
+  }, []);
+
+  const createEffectsSnapshot = useCallback((): EffectsSnapshot => {
+    return buildEffectsSnapshot(
+      selectedPresetName,
+      effectValues
+    );
+  }, [effectValues, selectedPresetName]);
 
   const restoreEffectsSnapshot = useCallback(
     (snapshot: EffectsSnapshot) => {
-      setSelectedPresetName(snapshot.selectedPresetName);
-
-      setUsePixelation(snapshot.usePixelation);
-      setPixelSize(snapshot.pixelSize);
-
-      setUsePsx(snapshot.usePsx);
-      setPsxResolutionScale(snapshot.psxResolutionScale);
-      setPsxColorLevels(snapshot.psxColorLevels);
-      setPsxWarpAmount(snapshot.psxWarpAmount);
-      setPsxJitterAmount(snapshot.psxJitterAmount);
-      setPsxDitherStrength(snapshot.psxDitherStrength);
-      setPsxBlockSize(snapshot.psxBlockSize);
-      setPsxCompositeBlur(snapshot.psxCompositeBlur);
-      setPsxChromaBleed(snapshot.psxChromaBleed);
-
-      setUsePixelSort(snapshot.usePixelSort);
-      setPixelSortDirection(snapshot.pixelSortDirection);
-      setPixelSortMode(snapshot.pixelSortMode);
-      setPixelSortThreshold(snapshot.pixelSortThreshold);
-      setPixelSortAmount(snapshot.pixelSortAmount);
-
-      setUsePalette(snapshot.usePalette);
-      setColorStart(snapshot.colorStart);
-      setColorEnd(snapshot.colorEnd);
-      setSteps(snapshot.steps);
-      setSwapPaletteColors(snapshot.swapPaletteColors);
-
-      setUseRegionalPalette(
-        snapshot.useRegionalPalette
-      );
-      setRegionalPaletteMode(
-        snapshot.regionalPaletteMode
-      );
-      setRegionalPaletteZones(
-        snapshot.regionalPaletteZones.map((zone) => ({
-          ...zone
-        }))
-      );
-
-      setRegionalPaletteRandomizeZones(
-        snapshot.regionalPaletteRandomizeZones
-      );
-
-      setRegionalPaletteRandomCellSize(
-        snapshot.regionalPaletteRandomCellSize
-      );
-
-      setRegionalPaletteZoneChaos(
-        snapshot.regionalPaletteZoneChaos
-      );
-
-      setRegionalPaletteZoneSeed(
-        snapshot.regionalPaletteZoneSeed
-      );
-
-      setUseDither(snapshot.useDither);
-      setDitherMode(snapshot.ditherMode);
-      setThreshold(snapshot.threshold);
-
-      setUseGlitch(snapshot.useGlitch);
-      setGlitch(snapshot.glitch);
-      setGlitchChaos(snapshot.glitchChaos);
-      setGlitchWidth(snapshot.glitchWidth);
-      setGlitchOverrideDither(snapshot.glitchOverrideDither);
-      setEdgeGlitchOnly(snapshot.edgeGlitchOnly);
-
-      setUseChromatic(snapshot.useChromatic);
-      setChromaticOffset(snapshot.chromaticOffset);
-
-      setUseAscii(snapshot.useAscii);
-      setAsciiCellSize(snapshot.asciiCellSize);
-      setAsciiOpacity(snapshot.asciiOpacity);
-      setAsciiMode(snapshot.asciiMode);
-      setAsciiColor(snapshot.asciiColor);
-
-      setUsePatternDither(snapshot.usePatternDither);
-      setPatternDitherShape(snapshot.patternDitherShape);
-      setPatternDitherScale(snapshot.patternDitherScale);
-      setPatternDitherDensity(snapshot.patternDitherDensity);
-      setPatternDitherOpacity(snapshot.patternDitherOpacity);
-      setPatternDitherColor(snapshot.patternDitherColor);
-      setPatternDitherBackgroundColor(
-        snapshot.patternDitherBackgroundColor
-      );
-      setPatternDitherInvert(snapshot.patternDitherInvert);
-      setPatternDitherReplaceImage(
-        snapshot.patternDitherReplaceImage
-      );
-
-      setUseDataOverlay(snapshot.useDataOverlay);
-      setDataOverlayMode(snapshot.dataOverlayMode);
-      setDataOverlayDensity(snapshot.dataOverlayDensity);
-      setDataOverlayFontSize(snapshot.dataOverlayFontSize);
-      setDataOverlayOpacity(snapshot.dataOverlayOpacity);
-      setDataOverlayColor(snapshot.dataOverlayColor);
-      setDataOverlayCustomText(snapshot.dataOverlayCustomText);
-
-      setUseHudFrame(snapshot.useHudFrame);
-      setHudFrameStyle(snapshot.hudFrameStyle);
-      setHudFrameOpacity(snapshot.hudFrameOpacity);
-      setHudFrameColor(snapshot.hudFrameColor);
-      setHudFrameShowGrid(snapshot.hudFrameShowGrid);
-      setHudFrameShowLabels(snapshot.hudFrameShowLabels);
-      setHudFrameShowCornerMarks(
-        snapshot.hudFrameShowCornerMarks
-      );
-      setHudFrameSafeArea(snapshot.hudFrameSafeArea);
-
-      setUseSignalWaves(snapshot.useSignalWaves);
-      setSignalWavesMode(snapshot.signalWavesMode);
-      setSignalWavesFrequency(snapshot.signalWavesFrequency);
-      setSignalWavesAmplitude(snapshot.signalWavesAmplitude);
-      setSignalWavesDensity(snapshot.signalWavesDensity);
-      setSignalWavesOpacity(snapshot.signalWavesOpacity);
-      setSignalWavesColor(snapshot.signalWavesColor);
-      setSignalWavesBackgroundColor(
-        snapshot.signalWavesBackgroundColor
-      );
-      setSignalWavesReplaceImage(
-        snapshot.signalWavesReplaceImage
-      );
-      setSignalWavesReactToImage(
-        snapshot.signalWavesReactToImage
-      );
-
-      setUsePanelLayout(snapshot.usePanelLayout);
-      setPanelLayoutMode(snapshot.panelLayoutMode);
-      setPanelLayoutGap(snapshot.panelLayoutGap);
-      setPanelLayoutBorderWidth(
-        snapshot.panelLayoutBorderWidth
-      );
-      setPanelLayoutBorderColor(
-        snapshot.panelLayoutBorderColor
-      );
-      setPanelLayoutBackgroundColor(
-        snapshot.panelLayoutBackgroundColor
-      );
-      setPanelLayoutPanelOpacity(
-        snapshot.panelLayoutPanelOpacity
-      );
-      setPanelLayoutRandomCrop(
-        snapshot.panelLayoutRandomCrop
-      );
-      setPanelLayoutCropIntensity(
-        snapshot.panelLayoutCropIntensity
-      );
-      setPanelLayoutPanX(snapshot.panelLayoutPanX);
-      setPanelLayoutPanY(snapshot.panelLayoutPanY);
-      setPanelLayoutMirrorAlternate(
-        snapshot.panelLayoutMirrorAlternate
-      );
-
-      setUseNoise(snapshot.useNoise);
-      setNoiseAmount(snapshot.noiseAmount);
-
-      setUseScanlines(snapshot.useScanlines);
-      setScanlineIntensity(snapshot.scanlineIntensity);
+      applyEffectsSnapshot(snapshot, effectSetters);
     },
-    []
+    [effectSetters]
   );
 
   const clearEffects = useCallback(() => {
     setLastEffectsSnapshot(createEffectsSnapshot());
-
-    setSelectedPresetName('CUSTOM');
-
-    setUsePixelation(false);
-    setPixelSize(4);
-
-    setUsePsx(false);
-    setPsxResolutionScale(4);
-    setPsxColorLevels(8);
-    setPsxWarpAmount(2);
-    setPsxJitterAmount(2);
-    setPsxDitherStrength(0.45);
-    setPsxBlockSize(12);
-    setPsxCompositeBlur(0.8);
-    setPsxChromaBleed(1);
-
-    setUsePixelSort(false);
-    setPixelSortDirection('horizontal');
-    setPixelSortMode('bright');
-    setPixelSortThreshold(160);
-    setPixelSortAmount(0.75);
-
-    setUsePalette(false);
-    setColorStart('#000000');
-    setColorEnd('#00ff00');
-    setSteps(4);
-    setSwapPaletteColors(false);
-
-     setUseRegionalPalette(false);
-    setRegionalPaletteMode('random-zones');
-    setRegionalPaletteZones(
-      DEFAULT_REGIONAL_PALETTE_ZONES.map((zone) => ({
-        ...zone
-      }))
-    );
-    setRegionalPaletteRandomizeZones(false);
-    setRegionalPaletteRandomCellSize(180);
-    setRegionalPaletteZoneChaos(55);
-    setRegionalPaletteZoneSeed(12345);
-
-    setUseDither(false);
-    setDitherMode('floyd-steinberg');
-    setThreshold(255);
-
-    setUseGlitch(false);
-    setGlitch(0);
-    setGlitchChaos(0);
-    setGlitchWidth(100);
-    setGlitchOverrideDither(false);
-    setEdgeGlitchOnly(true);
-
-    setUseChromatic(false);
-    setChromaticOffset(3);
-
-    setUseAscii(false);
-    setAsciiCellSize(12);
-    setAsciiOpacity(0.5);
-    setAsciiMode('overlay');
-    setAsciiColor('#00ff99');
-
-    setUsePatternDither(false);
-    setPatternDitherShape('dot');
-    setPatternDitherScale(12);
-    setPatternDitherDensity(100);
-    setPatternDitherOpacity(0.9);
-    setPatternDitherColor('#00ff99');
-    setPatternDitherBackgroundColor('#050505');
-    setPatternDitherInvert(false);
-    setPatternDitherReplaceImage(false);
-
-    setUseDataOverlay(false);
-    setDataOverlayMode('random-codes');
-    setDataOverlayDensity(18);
-    setDataOverlayFontSize(11);
-    setDataOverlayOpacity(0.45);
-    setDataOverlayColor('#00ff99');
-    setDataOverlayCustomText('SIGNAL UNSTABLE');
-
-    setUseHudFrame(false);
-    setHudFrameStyle('scan-frame');
-    setHudFrameOpacity(0.75);
-    setHudFrameColor('#00ff99');
-    setHudFrameShowGrid(true);
-    setHudFrameShowLabels(true);
-    setHudFrameShowCornerMarks(true);
-    setHudFrameSafeArea(3);
-
-    setUseSignalWaves(false);
-    setSignalWavesMode('horizontal');
-    setSignalWavesFrequency(12);
-    setSignalWavesAmplitude(26);
-    setSignalWavesDensity(18);
-    setSignalWavesOpacity(0.65);
-    setSignalWavesColor('#00ff99');
-    setSignalWavesBackgroundColor('#050505');
-    setSignalWavesReplaceImage(false);
-    setSignalWavesReactToImage(true);
-
-    setUsePanelLayout(false);
-    setPanelLayoutMode('side-panel');
-    setPanelLayoutGap(10);
-    setPanelLayoutBorderWidth(1);
-    setPanelLayoutBorderColor('#00ff99');
-    setPanelLayoutBackgroundColor('#050505');
-    setPanelLayoutPanelOpacity(1);
-    setPanelLayoutRandomCrop(true);
-    setPanelLayoutCropIntensity(55);
-    setPanelLayoutPanX(0);
-    setPanelLayoutPanY(0);
-    setPanelLayoutMirrorAlternate(false);
-
-    setUseNoise(false);
-    setNoiseAmount(15);
-
-    setUseScanlines(false);
-    setScanlineIntensity(0.2);
-  }, [createEffectsSnapshot]);
+    clearEffectSettings(effectSetters);
+  }, [createEffectsSnapshot, effectSetters]);
 
   const fockGoBack = useCallback(() => {
     if (!lastEffectsSnapshot) return;
@@ -1174,38 +749,6 @@ function App() {
     restoreEffectsSnapshot(lastEffectsSnapshot);
     setLastEffectsSnapshot(null);
   }, [lastEffectsSnapshot, restoreEffectsSnapshot]);
-
-  const calcStrips = useCallback(
-    (
-      chaosLevel: number,
-      widthSetting: number,
-      random: RandomGenerator
-    ): GlitchStrip[] => {
-      return Array.from({ length: 30 }, () => {
-        const active =
-          chaosLevel === 0
-            ? true
-            : random() * 100 < chaosLevel;
-
-        const widthPct =
-          widthSetting === 100
-            ? 1
-            : 0.3 + random() * (widthSetting / 100 - 0.1);
-
-        const maxLeft = 1 - widthPct;
-
-        const leftPct =
-          widthSetting === 100 ? 0 : random() * maxLeft;
-
-        return {
-          active,
-          widthPct: Math.min(1, Math.max(0.1, widthPct)),
-          leftPct
-        };
-      });
-    },
-    []
-  );
 
   const saveImage = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1266,596 +809,31 @@ function App() {
   }, [exportFormat, exportDpi]);
 
   const applyPreset = useCallback((preset: EffectPreset) => {
-    const panelPreset =
-      preset as EffectPreset & Partial<PanelPresetFields>;
-
-    const regionalPreset =
-      preset as EffectPreset & Partial<RegionalPresetFields>;
-
-    setSelectedPresetName(preset.name);
-
-    setUsePixelation(preset.usePixelation);
-    setPixelSize(preset.pixelSize);
-
-    setUsePsx(preset.usePsx);
-    setPsxResolutionScale(preset.psxResolutionScale);
-    setPsxColorLevels(preset.psxColorLevels);
-    setPsxWarpAmount(preset.psxWarpAmount);
-    setPsxJitterAmount(preset.psxJitterAmount);
-    setPsxDitherStrength(preset.psxDitherStrength);
-    setPsxBlockSize(preset.psxBlockSize);
-    setPsxCompositeBlur(preset.psxCompositeBlur);
-    setPsxChromaBleed(preset.psxChromaBleed);
-
-    setUsePixelSort(preset.usePixelSort);
-    setPixelSortDirection(preset.pixelSortDirection);
-    setPixelSortMode(preset.pixelSortMode);
-    setPixelSortThreshold(preset.pixelSortThreshold);
-    setPixelSortAmount(preset.pixelSortAmount);
-
-    setUsePalette(preset.usePalette);
-    setColorStart(preset.colorStart);
-    setColorEnd(preset.colorEnd);
-    setSteps(preset.steps);
-    setSwapPaletteColors(preset.swapPaletteColors);
-
-    setUseRegionalPalette(
-      regionalPreset.useRegionalPalette ?? false
-    );
-    setRegionalPaletteMode(
-      regionalPreset.regionalPaletteMode ?? 'random-zones'
-    );
-    setRegionalPaletteZones(
-      regionalPreset.regionalPaletteZones
-        ? regionalPreset.regionalPaletteZones.map((zone) => ({
-            ...zone
-          }))
-        : DEFAULT_REGIONAL_PALETTE_ZONES.map((zone) => ({
-            ...zone
-          }))
-    );
-    setRegionalPaletteRandomizeZones(
-      regionalPreset.regionalPaletteRandomizeZones ?? false
-    );
-    setRegionalPaletteRandomCellSize(
-      regionalPreset.regionalPaletteRandomCellSize ?? 180
-    );
-    setRegionalPaletteZoneChaos(
-      regionalPreset.regionalPaletteZoneChaos ?? 55
-    );
-    setRegionalPaletteZoneSeed(
-      regionalPreset.regionalPaletteZoneSeed ?? 12345
-    );
-
-    setUseDither(preset.useDither);
-    setDitherMode(preset.ditherMode);
-    setThreshold(preset.threshold);
-
-    setUseGlitch(preset.useGlitch);
-    setGlitch(preset.glitch);
-    setGlitchChaos(preset.glitchChaos);
-    setGlitchWidth(preset.glitchWidth);
-    setGlitchOverrideDither(preset.glitchOverrideDither);
-    setEdgeGlitchOnly(preset.edgeGlitchOnly);
-
-    setUseChromatic(preset.useChromatic);
-    setChromaticOffset(preset.chromaticOffset);
-
-    setUseAscii(preset.useAscii);
-    setAsciiCellSize(preset.asciiCellSize);
-    setAsciiOpacity(preset.asciiOpacity);
-    setAsciiMode(preset.asciiMode);
-    setAsciiColor(preset.asciiColor);
-
-    setUsePatternDither(preset.usePatternDither);
-    setPatternDitherShape(preset.patternDitherShape);
-    setPatternDitherScale(preset.patternDitherScale);
-    setPatternDitherDensity(preset.patternDitherDensity);
-    setPatternDitherOpacity(preset.patternDitherOpacity);
-    setPatternDitherColor(preset.patternDitherColor);
-    setPatternDitherBackgroundColor(
-      preset.patternDitherBackgroundColor
-    );
-    setPatternDitherInvert(preset.patternDitherInvert);
-    setPatternDitherReplaceImage(
-      preset.patternDitherReplaceImage
-    );
-
-    setUseSignalWaves(preset.useSignalWaves);
-    setSignalWavesMode(preset.signalWavesMode);
-    setSignalWavesFrequency(preset.signalWavesFrequency);
-    setSignalWavesAmplitude(preset.signalWavesAmplitude);
-    setSignalWavesDensity(preset.signalWavesDensity);
-    setSignalWavesOpacity(preset.signalWavesOpacity);
-    setSignalWavesColor(preset.signalWavesColor);
-    setSignalWavesBackgroundColor(
-      preset.signalWavesBackgroundColor
-    );
-    setSignalWavesReplaceImage(
-      preset.signalWavesReplaceImage
-    );
-    setSignalWavesReactToImage(
-      preset.signalWavesReactToImage
-    );
-
-    setUseDataOverlay(preset.useDataOverlay);
-    setDataOverlayMode(preset.dataOverlayMode);
-    setDataOverlayDensity(preset.dataOverlayDensity);
-    setDataOverlayFontSize(preset.dataOverlayFontSize);
-    setDataOverlayOpacity(preset.dataOverlayOpacity);
-    setDataOverlayColor(preset.dataOverlayColor);
-    setDataOverlayCustomText(preset.dataOverlayCustomText);
-
-    setUseHudFrame(preset.useHudFrame);
-    setHudFrameStyle(preset.hudFrameStyle);
-    setHudFrameOpacity(preset.hudFrameOpacity);
-    setHudFrameColor(preset.hudFrameColor);
-    setHudFrameShowGrid(preset.hudFrameShowGrid);
-    setHudFrameShowLabels(preset.hudFrameShowLabels);
-    setHudFrameShowCornerMarks(
-      preset.hudFrameShowCornerMarks
-    );
-    setHudFrameSafeArea(preset.hudFrameSafeArea);
-
-    setUsePanelLayout(panelPreset.usePanelLayout ?? false);
-    setPanelLayoutMode(
-      panelPreset.panelLayoutMode ?? 'side-panel'
-    );
-    setPanelLayoutGap(panelPreset.panelLayoutGap ?? 10);
-    setPanelLayoutBorderWidth(
-      panelPreset.panelLayoutBorderWidth ?? 1
-    );
-    setPanelLayoutBorderColor(
-      panelPreset.panelLayoutBorderColor ?? '#00ff99'
-    );
-    setPanelLayoutBackgroundColor(
-      panelPreset.panelLayoutBackgroundColor ?? '#050505'
-    );
-    setPanelLayoutPanelOpacity(
-      panelPreset.panelLayoutPanelOpacity ?? 1
-    );
-    setPanelLayoutRandomCrop(
-      panelPreset.panelLayoutRandomCrop ?? true
-    );
-    setPanelLayoutCropIntensity(
-      panelPreset.panelLayoutCropIntensity ?? 55
-    );
-    setPanelLayoutPanX(panelPreset.panelLayoutPanX ?? 0);
-    setPanelLayoutPanY(panelPreset.panelLayoutPanY ?? 0);
-    setPanelLayoutMirrorAlternate(
-      panelPreset.panelLayoutMirrorAlternate ?? false
-    );
-
-    setUseNoise(preset.useNoise);
-    setNoiseAmount(preset.noiseAmount);
-
-    setUseScanlines(preset.useScanlines);
-    setScanlineIntensity(preset.scanlineIntensity);
-
+    applyEffectPreset(preset, effectSetters);
     setLastEffectsSnapshot(null);
-  }, []);
+  }, [effectSetters]);
 
   const processImage = useCallback(() => {
     const canvas = canvasRef.current;
 
     if (!canvas || !originalImage) return;
 
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) return;
-
-    const random = createRandom(activeSeed);
-
-    const width = originalImage.width;
-    const height = originalImage.height;
-
-    canvas.width = width;
-    canvas.height = height;
-
-    ctx.imageSmoothingEnabled = false;
-
-    ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(originalImage, 0, 0, width, height);
-
-    if (showOriginal) return;
-
-    if (usePixelation && pixelSize > 1) {
-      const smallWidth = Math.max(1, Math.floor(width / pixelSize));
-      const smallHeight = Math.max(1, Math.floor(height / pixelSize));
-
-      if (!tempCanvasRef.current) {
-        tempCanvasRef.current = document.createElement('canvas');
-      }
-
-      const tempCanvas = tempCanvasRef.current;
-      const tempCtx = tempCanvas.getContext('2d');
-
-      if (tempCtx) {
-        tempCanvas.width = smallWidth;
-        tempCanvas.height = smallHeight;
-
-        tempCtx.imageSmoothingEnabled = false;
-        ctx.imageSmoothingEnabled = false;
-
-        tempCtx.drawImage(canvas, 0, 0, smallWidth, smallHeight);
-
-        ctx.clearRect(0, 0, width, height);
-
-        ctx.drawImage(
-          tempCanvas,
-          0,
-          0,
-          smallWidth,
-          smallHeight,
-          0,
-          0,
-          width,
-          height
-        );
-      }
-    }
-
-    if (usePsx) {
-      applyPsx(ctx, width, height, {
-        resolutionScale: psxResolutionScale,
-        colorLevels: psxColorLevels,
-        warpAmount: psxWarpAmount,
-        jitterAmount: psxJitterAmount,
-        ditherStrength: psxDitherStrength,
-        blockSize: psxBlockSize,
-        compositeBlur: psxCompositeBlur,
-        chromaBleed: psxChromaBleed,
-        random
-      });
-    }
-
-    if (usePixelSort) {
-      applyPixelSort(ctx, width, height, {
-        direction: pixelSortDirection,
-        mode: pixelSortMode,
-        threshold: pixelSortThreshold,
-        amount: pixelSortAmount
-      });
-    }
-
-    const prePaletteCopy = ctx.getImageData(0, 0, width, height);
-
-    const palette = usePalette
-      ? generatePalette(
-          swapPaletteColors ? colorEnd : colorStart,
-          swapPaletteColors ? colorStart : colorEnd,
-          steps
-        )
-      : [
-          { r: 0, g: 0, b: 0 },
-          { r: 255, g: 255, b: 255 }
-        ];
-
-    if (useRegionalPalette) {
-        applyRegionalPalette(ctx, width, height, {
-        mode: regionalPaletteMode,
-        zones: regionalPaletteZones,
-        panelLayoutMode,
-        panelLayoutGap,
-        randomizeZones: regionalPaletteRandomizeZones,
-        randomCellSize: regionalPaletteRandomCellSize,
-        randomZoneChaos: regionalPaletteZoneChaos,
-        randomSeed: regionalPaletteZoneSeed
-      });
-    } else {
-      if (usePalette && !useDither) {
-        applyPaletteByBrightness(
-          ctx,
-          width,
-          height,
-          palette
-        );
-      }
-
-      if (useDither) {
-        applyDithering(
-          ctx,
-          width,
-          height,
-          threshold,
-          palette,
-          ditherMode
-        );
-      }
-    }
-
-    const processedCopy = ctx.getImageData(0, 0, width, height);
-
-    if (useGlitch && glitch > 0) {
-      const target = ctx.getImageData(0, 0, width, height);
-
-      const source = glitchOverrideDither
-        ? prePaletteCopy
-        : processedCopy;
-
-      const strips = calcStrips(glitchChaos, glitchWidth, random);
-
-      const stripHeight = Math.max(
-        1,
-        Math.floor(height / strips.length)
-      );
-
-      for (let s = 0; s < strips.length; s++) {
-        const strip = strips[s];
-
-        if (!strip.active) continue;
-
-        const yStart = s * stripHeight;
-        const yEnd = Math.min(height, yStart + stripHeight);
-
-        const xStart = Math.floor(strip.leftPct * width);
-        const xWidth = Math.floor(strip.widthPct * width);
-        const xEnd = Math.min(width, xStart + xWidth);
-
-        const shift = Math.round((random() - 0.5) * glitch * 8);
-
-        for (let y = yStart; y < yEnd; y++) {
-          for (let x = xStart; x < xEnd; x++) {
-            const srcX = Math.max(
-              0,
-              Math.min(width - 1, x + shift)
-            );
-
-            const targetIndex = (y * width + x) * 4;
-            const sourceIndex = (y * width + srcX) * 4;
-
-            let shouldAffect = true;
-
-            if (edgeGlitchOnly) {
-              const currentBrightness = getBrightness(
-                processedCopy.data[targetIndex],
-                processedCopy.data[targetIndex + 1],
-                processedCopy.data[targetIndex + 2]
-              );
-
-              const compareX = Math.max(
-                0,
-                Math.min(width - 1, x + 1)
-              );
-
-              const compareIndex = (y * width + compareX) * 4;
-
-              const compareBrightness = getBrightness(
-                processedCopy.data[compareIndex],
-                processedCopy.data[compareIndex + 1],
-                processedCopy.data[compareIndex + 2]
-              );
-
-              shouldAffect =
-                Math.abs(currentBrightness - compareBrightness) > 18;
-            }
-
-            if (!shouldAffect) continue;
-
-            target.data[targetIndex] = source.data[sourceIndex];
-
-            target.data[targetIndex + 1] = glitchOverrideDither
-              ? Math.round(
-                  (target.data[targetIndex + 1] +
-                    source.data[sourceIndex + 1]) /
-                    2
-                )
-              : source.data[sourceIndex + 1];
-
-            target.data[targetIndex + 2] =
-              source.data[sourceIndex + 2];
-          }
-        }
-      }
-
-      ctx.putImageData(target, 0, 0);
-    }
-
-    if (useChromatic && chromaticOffset > 0) {
-      applyChromatic(ctx, width, height, {
-        amount: chromaticOffset
-      });
-    }
-
-    if (useAscii) {
-      applyAscii(ctx, width, height, {
-        cellSize: asciiCellSize,
-        opacity: asciiOpacity,
-        mode: asciiMode,
-        color: asciiColor
-      });
-    }
-
-    if (usePatternDither) {
-      applyPatternDither(ctx, width, height, {
-        shape: patternDitherShape,
-        scale: patternDitherScale,
-        density: patternDitherDensity,
-        opacity: patternDitherOpacity,
-        color: patternDitherColor,
-        backgroundColor: patternDitherBackgroundColor,
-        invert: patternDitherInvert,
-        replaceImage: patternDitherReplaceImage
-      });
-    }
-
-    if (useSignalWaves) {
-      applySignalWaves(ctx, width, height, {
-        mode: signalWavesMode,
-        frequency: signalWavesFrequency,
-        amplitude: signalWavesAmplitude,
-        density: signalWavesDensity,
-        opacity: signalWavesOpacity,
-        color: signalWavesColor,
-        backgroundColor: signalWavesBackgroundColor,
-        replaceImage: signalWavesReplaceImage,
-        reactToImage: signalWavesReactToImage
-      });
-    }
-
-    if (usePanelLayout) {
-      applyPanelLayout(ctx, width, height, {
-        mode: panelLayoutMode,
-        gap: panelLayoutGap,
-        borderWidth: panelLayoutBorderWidth,
-        borderColor: panelLayoutBorderColor,
-        backgroundColor: panelLayoutBackgroundColor,
-        panelOpacity: panelLayoutPanelOpacity,
-        randomCrop: panelLayoutRandomCrop,
-        cropIntensity: panelLayoutCropIntensity,
-        panX: panelLayoutPanX,
-        panY: panelLayoutPanY,
-        mirrorAlternate: panelLayoutMirrorAlternate,
-        seed: activeSeed
-      });
-    }
-
-    if (useNoise && noiseAmount > 0) {
-      applyNoise(ctx, width, height, noiseAmount, random);
-    }
-
-    if (useScanlines && scanlineIntensity > 0) {
-      applyScanlines(ctx, width, height, scanlineIntensity);
-    }
-
-    if (useDataOverlay) {
-      applyDataOverlay(ctx, width, height, {
-        mode: dataOverlayMode,
-        density: dataOverlayDensity,
-        fontSize: dataOverlayFontSize,
-        opacity: dataOverlayOpacity,
-        color: dataOverlayColor,
-        customText: dataOverlayCustomText,
-        seed: activeSeed
-      });
-    }
-
-    if (useHudFrame) {
-      applyHudFrame(ctx, width, height, {
-        style: hudFrameStyle,
-        opacity: hudFrameOpacity,
-        color: hudFrameColor,
-        showGrid: hudFrameShowGrid,
-        showLabels: hudFrameShowLabels,
-        showCornerMarks: hudFrameShowCornerMarks,
-        safeArea: hudFrameSafeArea
-      });
-    }
+    processCanvasImage({
+      canvas,
+      tempCanvas: tempCanvasRef.current,
+      setTempCanvas: (canvasElement) => {
+        tempCanvasRef.current = canvasElement;
+      },
+      originalImage,
+      showOriginal,
+      activeSeed,
+      values: effectValues
+    });
   }, [
-    originalImage,
-    showOriginal,
     activeSeed,
-
-    usePixelation,
-    pixelSize,
-
-    usePsx,
-    psxResolutionScale,
-    psxColorLevels,
-    psxWarpAmount,
-    psxJitterAmount,
-    psxDitherStrength,
-    psxBlockSize,
-    psxCompositeBlur,
-    psxChromaBleed,
-
-    usePixelSort,
-    pixelSortDirection,
-    pixelSortMode,
-    pixelSortThreshold,
-    pixelSortAmount,
-
-    usePalette,
-    colorStart,
-    colorEnd,
-    steps,
-    swapPaletteColors,
-
-    useRegionalPalette,
-    regionalPaletteMode,
-    regionalPaletteZones,
-    regionalPaletteRandomizeZones,
-    regionalPaletteRandomCellSize,
-    regionalPaletteZoneChaos,
-    regionalPaletteZoneSeed,
-
-    useDither,
-    ditherMode,
-    threshold,
-
-    useGlitch,
-    glitch,
-    glitchChaos,
-    glitchWidth,
-    glitchOverrideDither,
-    edgeGlitchOnly,
-    calcStrips,
-
-    useChromatic,
-    chromaticOffset,
-
-    useAscii,
-    asciiCellSize,
-    asciiOpacity,
-    asciiMode,
-    asciiColor,
-
-    usePatternDither,
-    patternDitherShape,
-    patternDitherScale,
-    patternDitherDensity,
-    patternDitherOpacity,
-    patternDitherColor,
-    patternDitherBackgroundColor,
-    patternDitherInvert,
-    patternDitherReplaceImage,
-
-    useSignalWaves,
-    signalWavesMode,
-    signalWavesFrequency,
-    signalWavesAmplitude,
-    signalWavesDensity,
-    signalWavesOpacity,
-    signalWavesColor,
-    signalWavesBackgroundColor,
-    signalWavesReplaceImage,
-    signalWavesReactToImage,
-
-    usePanelLayout,
-    panelLayoutMode,
-    panelLayoutGap,
-    panelLayoutBorderWidth,
-    panelLayoutBorderColor,
-    panelLayoutBackgroundColor,
-    panelLayoutPanelOpacity,
-    panelLayoutRandomCrop,
-    panelLayoutCropIntensity,
-    panelLayoutPanX,
-    panelLayoutPanY,
-    panelLayoutMirrorAlternate,
-
-    useNoise,
-    noiseAmount,
-
-    useScanlines,
-    scanlineIntensity,
-
-    useDataOverlay,
-    dataOverlayMode,
-    dataOverlayDensity,
-    dataOverlayFontSize,
-    dataOverlayOpacity,
-    dataOverlayColor,
-    dataOverlayCustomText,
-
-    useHudFrame,
-    hudFrameStyle,
-    hudFrameOpacity,
-    hudFrameColor,
-    hudFrameShowGrid,
-    hudFrameShowLabels,
-    hudFrameShowCornerMarks,
-    hudFrameSafeArea
+    effectValues,
+    originalImage,
+    showOriginal
   ]);
 
   const loadImageFile = useCallback((file: File) => {
@@ -1917,6 +895,21 @@ function App() {
     []
   );
 
+  const canPanPreviewImage = useCallback(() => {
+    const previewArea = previewAreaRef.current;
+    const canvas = canvasRef.current;
+
+    if (!previewArea || !canvas) return false;
+
+    const previewRect = previewArea.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+
+    return (
+      canvasRect.width > previewRect.width ||
+      canvasRect.height > previewRect.height
+    );
+  }, []);
+
   const handleWheel = useCallback(
     (event: React.WheelEvent<HTMLDivElement>) => {
       if (!originalImage) return;
@@ -1939,7 +932,13 @@ function App() {
 
   const handleMouseDown = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!originalImage || event.button !== 0) return;
+      if (
+        !originalImage ||
+        event.button !== 0 ||
+        !canPanPreviewImage()
+      ) {
+        return;
+      }
 
       setIsPanning(true);
 
@@ -1953,7 +952,7 @@ function App() {
         y: pan.y
       };
     },
-    [originalImage, pan]
+    [canPanPreviewImage, originalImage, pan]
   );
 
   const handleMouseMove = useCallback(
@@ -1985,6 +984,43 @@ function App() {
     }
   }, [originalImage, processImage]);
 
+  useEffect(() => {
+    if (!originalImage) {
+      setCanPanPreview(false);
+      return;
+    }
+
+    let frame = 0;
+
+    const syncCanPanPreview = () => {
+      cancelAnimationFrame(frame);
+
+      frame = requestAnimationFrame(() => {
+        const nextCanPan = canPanPreviewImage();
+
+        setCanPanPreview(nextCanPan);
+
+        if (!nextCanPan) {
+          setPan({ x: 0, y: 0 });
+          setIsPanning(false);
+        }
+      });
+    };
+
+    syncCanPanPreview();
+    window.addEventListener('resize', syncCanPanPreview);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', syncCanPanPreview);
+    };
+  }, [
+    canPanPreviewImage,
+    originalImage,
+    showOriginal,
+    zoom
+  ]);
+
   return (
     <div
       style={{
@@ -1998,6 +1034,7 @@ function App() {
       }}
     >
       <div
+        ref={previewAreaRef}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -2015,7 +1052,7 @@ function App() {
           position: 'relative',
           background:
             'radial-gradient(circle at center, #0b1510 0%, #050505 65%)',
-          cursor: originalImage
+          cursor: originalImage && canPanPreview
             ? isPanning
               ? 'grabbing'
               : 'grab'
@@ -2312,228 +1349,8 @@ function App() {
           sectionStyle={sectionStyle}
           sliderLabelStyle={sliderLabelStyle}
           markAsCustom={markAsCustom}
-          values={{
-            usePixelation,
-            pixelSize,
-
-            usePsx,
-            psxResolutionScale,
-            psxColorLevels,
-            psxWarpAmount,
-            psxJitterAmount,
-            psxDitherStrength,
-            psxBlockSize,
-            psxCompositeBlur,
-            psxChromaBleed,
-
-            usePixelSort,
-            pixelSortDirection,
-            pixelSortMode,
-            pixelSortThreshold,
-            pixelSortAmount,
-
-            usePalette,
-            colorStart,
-            colorEnd,
-            steps,
-            swapPaletteColors,
-
-            useRegionalPalette,
-            regionalPaletteMode,
-            regionalPaletteZones,
-            regionalPaletteRandomizeZones,
-            regionalPaletteRandomCellSize,
-            regionalPaletteZoneChaos,
-            regionalPaletteZoneSeed,
-
-            useDither,
-            ditherMode,
-            threshold,
-
-            useGlitch,
-            glitch,
-            glitchChaos,
-            glitchWidth,
-            glitchOverrideDither,
-            edgeGlitchOnly,
-
-            useChromatic,
-            chromaticOffset,
-
-            useAscii,
-            asciiCellSize,
-            asciiOpacity,
-            asciiMode,
-            asciiColor,
-
-            usePatternDither,
-            patternDitherShape,
-            patternDitherScale,
-            patternDitherDensity,
-            patternDitherOpacity,
-            patternDitherColor,
-            patternDitherBackgroundColor,
-            patternDitherInvert,
-            patternDitherReplaceImage,
-
-            useSignalWaves,
-            signalWavesMode,
-            signalWavesFrequency,
-            signalWavesAmplitude,
-            signalWavesDensity,
-            signalWavesOpacity,
-            signalWavesColor,
-            signalWavesBackgroundColor,
-            signalWavesReplaceImage,
-            signalWavesReactToImage,
-
-            usePanelLayout,
-            panelLayoutMode,
-            panelLayoutGap,
-            panelLayoutBorderWidth,
-            panelLayoutBorderColor,
-            panelLayoutBackgroundColor,
-            panelLayoutPanelOpacity,
-            panelLayoutRandomCrop,
-            panelLayoutCropIntensity,
-            panelLayoutPanX,
-            panelLayoutPanY,
-            panelLayoutMirrorAlternate,
-
-            useNoise,
-            noiseAmount,
-
-            useScanlines,
-            scanlineIntensity,
-
-            useDataOverlay,
-            dataOverlayMode,
-            dataOverlayDensity,
-            dataOverlayFontSize,
-            dataOverlayOpacity,
-            dataOverlayColor,
-            dataOverlayCustomText,
-
-            useHudFrame,
-            hudFrameStyle,
-            hudFrameOpacity,
-            hudFrameColor,
-            hudFrameShowGrid,
-            hudFrameShowLabels,
-            hudFrameShowCornerMarks,
-            hudFrameSafeArea
-          }}
-          setters={{
-            setUsePixelation,
-            setPixelSize,
-
-            setUsePsx,
-            setPsxResolutionScale,
-            setPsxColorLevels,
-            setPsxWarpAmount,
-            setPsxJitterAmount,
-            setPsxDitherStrength,
-            setPsxBlockSize,
-            setPsxCompositeBlur,
-            setPsxChromaBleed,
-
-            setUsePixelSort,
-            setPixelSortDirection,
-            setPixelSortMode,
-            setPixelSortThreshold,
-            setPixelSortAmount,
-
-            setUsePalette,
-            setColorStart,
-            setColorEnd,
-            setSteps,
-            setSwapPaletteColors,
-
-            setUseRegionalPalette,
-            setRegionalPaletteMode,
-            updateRegionalPaletteZone,
-            setRegionalPaletteRandomizeZones,
-            setRegionalPaletteRandomCellSize,
-            setRegionalPaletteZoneChaos,
-            randomizeRegionalPaletteZoneMap,
-
-            setUseDither,
-            setDitherMode,
-            setThreshold,
-
-            setUseGlitch,
-            setGlitch,
-            setGlitchChaos,
-            setGlitchWidth,
-            setGlitchOverrideDither,
-            setEdgeGlitchOnly,
-
-            setUseChromatic,
-            setChromaticOffset,
-
-            setUseAscii,
-            setAsciiCellSize,
-            setAsciiOpacity,
-            setAsciiMode,
-            setAsciiColor,
-
-            setUsePatternDither,
-            setPatternDitherShape,
-            setPatternDitherScale,
-            setPatternDitherDensity,
-            setPatternDitherOpacity,
-            setPatternDitherColor,
-            setPatternDitherBackgroundColor,
-            setPatternDitherInvert,
-            setPatternDitherReplaceImage,
-
-            setUseSignalWaves,
-            setSignalWavesMode,
-            setSignalWavesFrequency,
-            setSignalWavesAmplitude,
-            setSignalWavesDensity,
-            setSignalWavesOpacity,
-            setSignalWavesColor,
-            setSignalWavesBackgroundColor,
-            setSignalWavesReplaceImage,
-            setSignalWavesReactToImage,
-
-            setUsePanelLayout,
-            setPanelLayoutMode,
-            setPanelLayoutGap,
-            setPanelLayoutBorderWidth,
-            setPanelLayoutBorderColor,
-            setPanelLayoutBackgroundColor,
-            setPanelLayoutPanelOpacity,
-            setPanelLayoutRandomCrop,
-            setPanelLayoutCropIntensity,
-            setPanelLayoutPanX,
-            setPanelLayoutPanY,
-            setPanelLayoutMirrorAlternate,
-
-            setUseNoise,
-            setNoiseAmount,
-
-            setUseScanlines,
-            setScanlineIntensity,
-
-            setUseDataOverlay,
-            setDataOverlayMode,
-            setDataOverlayDensity,
-            setDataOverlayFontSize,
-            setDataOverlayOpacity,
-            setDataOverlayColor,
-            setDataOverlayCustomText,
-
-            setUseHudFrame,
-            setHudFrameStyle,
-            setHudFrameOpacity,
-            setHudFrameColor,
-            setHudFrameShowGrid,
-            setHudFrameShowLabels,
-            setHudFrameShowCornerMarks,
-            setHudFrameSafeArea
-          }}
+          values={effectValues}
+          setters={effectSetters}
         />
 
         <div style={sectionStyle}>
@@ -2651,8 +1468,8 @@ type EffectSectionsProps = {
   sectionStyle: CSSProperties;
   sliderLabelStyle: CSSProperties;
   markAsCustom: () => void;
-  values: any;
-  setters: any;
+  values: EffectValues;
+  setters: EffectSetters;
 };
 
 function EffectSections({
@@ -2877,7 +1694,7 @@ function EffectSections({
               ]}
               onChange={(value) => {
                 markAsCustom();
-                setters.setPixelSortMode(value);
+                setters.setPixelSortMode(value as PixelSortMode);
               }}
             />
 
@@ -3039,24 +1856,89 @@ function EffectSections({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 10,
+                gridTemplateColumns: '1fr',
+                gap: 12,
                 marginTop: 12
               }}
             >
               {values.regionalPaletteZones.map(
                 (zone: RegionalPaletteZone, index: number) => (
-                  <div key={index}>
-                    <UiColorInput
-                      label={`ZONE ${index + 1}`}
-                      value={zone.endColor}
-                      onChange={(value) => {
+                  <div
+                    key={index}
+                    style={{
+                      borderTop:
+                        index === 0
+                          ? 'none'
+                          : '1px solid #1c1c1c',
+                      paddingTop: index === 0 ? 0 : 12
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        letterSpacing: 2,
+                        color: '#7c7c7c',
+                        marginBottom: 8
+                      }}
+                    >
+                      ZONE {index + 1}
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: 10
+                      }}
+                    >
+                      <UiColorInput
+                        label="DARK"
+                        value={zone.startColor}
+                        onChange={(value) => {
+                          markAsCustom();
+                          setters.updateRegionalPaletteZone(index, {
+                            startColor: value
+                          });
+                        }}
+                      />
+
+                      <UiColorInput
+                        label="LIGHT"
+                        value={zone.endColor}
+                        onChange={(value) => {
+                          markAsCustom();
+                          setters.updateRegionalPaletteZone(index, {
+                            endColor: value
+                          });
+                        }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
                         markAsCustom();
                         setters.updateRegionalPaletteZone(index, {
-                          endColor: value
+                          startColor: zone.endColor,
+                          endColor: zone.startColor
                         });
                       }}
-                    />
+                      style={{
+                        width: '100%',
+                        marginTop: 8,
+                        background: '#07140d',
+                        color: '#00ff99',
+                        border: '1px solid #164d34',
+                        padding: '7px 10px',
+                        cursor: 'pointer',
+                        fontFamily: "'Datatype', monospace",
+                        fontSize: 11,
+                        letterSpacing: 2,
+                        borderRadius: 0
+                      }}
+                    >
+                      SWAP COLORS
+                    </button>
                   </div>
                 )
               )}
@@ -3149,7 +2031,7 @@ function EffectSections({
                   ]}
                   onChange={(value) => {
                     markAsCustom();
-                    setters.setDitherMode(value);
+                    setters.setDitherMode(value as DitherMode);
                   }}
                 />
 
@@ -3204,7 +2086,9 @@ function EffectSections({
                   ]}
                   onChange={(value) => {
                     markAsCustom();
-                    setters.setPatternDitherShape(value);
+                    setters.setPatternDitherShape(
+                      value as PatternDitherShape
+                    );
                   }}
                 />
 
@@ -3765,7 +2649,7 @@ function EffectSections({
               ]}
               onChange={(value) => {
                 markAsCustom();
-                setters.setAsciiMode(value);
+                setters.setAsciiMode(value as AsciiMode);
               }}
             />
 
@@ -3867,7 +2751,9 @@ function EffectSections({
               ]}
               onChange={(value) => {
                 markAsCustom();
-                setters.setDataOverlayMode(value);
+                setters.setDataOverlayMode(
+                  value as DataOverlayMode
+                );
               }}
             />
 
@@ -3973,7 +2859,7 @@ function EffectSections({
               ]}
               onChange={(value) => {
                 markAsCustom();
-                setters.setHudFrameStyle(value);
+                setters.setHudFrameStyle(value as HudFrameStyle);
               }}
             />
 
