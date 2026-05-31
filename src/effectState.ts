@@ -171,6 +171,13 @@ export function restoreEffectsSnapshot(
     snapshot.channelPacketLossShift
   );
 
+  setters.setUseFrameEcho(snapshot.useFrameEcho);
+  setters.setFrameEchoMode(snapshot.frameEchoMode);
+  setters.setFrameEchoCopies(snapshot.frameEchoCopies);
+  setters.setFrameEchoOffset(snapshot.frameEchoOffset);
+  setters.setFrameEchoDecay(snapshot.frameEchoDecay);
+  setters.setFrameEchoJitter(snapshot.frameEchoJitter);
+
   setters.setUseMotionSmear(snapshot.useMotionSmear);
   setters.setMotionSmearDirection(snapshot.motionSmearDirection);
   setters.setMotionSmearLength(snapshot.motionSmearLength);
@@ -348,6 +355,13 @@ export function clearEffectSettings(setters: EffectStateSetters) {
   setters.setChannelPacketLossBlockSize(20);
   setters.setChannelPacketLossAmount(0.35);
   setters.setChannelPacketLossShift(12);
+
+  setters.setUseFrameEcho(false);
+  setters.setFrameEchoMode('horizontal');
+  setters.setFrameEchoCopies(3);
+  setters.setFrameEchoOffset(18);
+  setters.setFrameEchoDecay(0.55);
+  setters.setFrameEchoJitter(4);
 
   setters.setUseMotionSmear(false);
   setters.setMotionSmearDirection('horizontal');
@@ -539,6 +553,13 @@ export function applyEffectPreset(
   setters.setChannelPacketLossShift(
     preset.channelPacketLossShift
   );
+
+  setters.setUseFrameEcho(preset.useFrameEcho);
+  setters.setFrameEchoMode(preset.frameEchoMode);
+  setters.setFrameEchoCopies(preset.frameEchoCopies);
+  setters.setFrameEchoOffset(preset.frameEchoOffset);
+  setters.setFrameEchoDecay(preset.frameEchoDecay);
+  setters.setFrameEchoJitter(preset.frameEchoJitter);
 
   setters.setUseMotionSmear(preset.useMotionSmear);
   setters.setMotionSmearDirection(preset.motionSmearDirection);

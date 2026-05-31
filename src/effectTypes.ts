@@ -6,6 +6,7 @@ import type {
 import type { ArtifactMaskMode } from './effects/artifactMask';
 import type { ChannelPacketLossChannel } from './effects/channelPacketLoss';
 import type { DitherMode } from './effects/dither';
+import type { FrameEchoMode } from './effects/frameEcho';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
 import type { MotionSmearDirection } from './effects/motionSmear';
@@ -87,6 +88,13 @@ export type EffectValues = {
   channelPacketLossBlockSize: number;
   channelPacketLossAmount: number;
   channelPacketLossShift: number;
+
+  useFrameEcho: boolean;
+  frameEchoMode: FrameEchoMode;
+  frameEchoCopies: number;
+  frameEchoOffset: number;
+  frameEchoDecay: number;
+  frameEchoJitter: number;
 
   useMotionSmear: boolean;
   motionSmearDirection: MotionSmearDirection;
@@ -242,6 +250,13 @@ export type EffectSetters = {
   setChannelPacketLossBlockSize: Setter<number>;
   setChannelPacketLossAmount: Setter<number>;
   setChannelPacketLossShift: Setter<number>;
+
+  setUseFrameEcho: Setter<boolean>;
+  setFrameEchoMode: Setter<FrameEchoMode>;
+  setFrameEchoCopies: Setter<number>;
+  setFrameEchoOffset: Setter<number>;
+  setFrameEchoDecay: Setter<number>;
+  setFrameEchoJitter: Setter<number>;
 
   setUseMotionSmear: Setter<boolean>;
   setMotionSmearDirection: Setter<MotionSmearDirection>;

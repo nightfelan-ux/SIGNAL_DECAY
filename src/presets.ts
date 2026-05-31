@@ -1,6 +1,7 @@
 import type { ArtifactMaskMode } from './effects/artifactMask';
 import type { ChannelPacketLossChannel } from './effects/channelPacketLoss';
 import type { DitherMode } from './effects/dither';
+import type { FrameEchoMode } from './effects/frameEcho';
 import type { PatternDitherShape } from './effects/patternDither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
@@ -78,6 +79,13 @@ export interface EffectPreset {
   channelPacketLossBlockSize: number;
   channelPacketLossAmount: number;
   channelPacketLossShift: number;
+
+  useFrameEcho: boolean;
+  frameEchoMode: FrameEchoMode;
+  frameEchoCopies: number;
+  frameEchoOffset: number;
+  frameEchoDecay: number;
+  frameEchoJitter: number;
 
   useMotionSmear: boolean;
   motionSmearDirection: MotionSmearDirection;
@@ -233,6 +241,13 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   channelPacketLossBlockSize: 20,
   channelPacketLossAmount: 0.35,
   channelPacketLossShift: 12,
+
+  useFrameEcho: false,
+  frameEchoMode: 'horizontal',
+  frameEchoCopies: 3,
+  frameEchoOffset: 18,
+  frameEchoDecay: 0.55,
+  frameEchoJitter: 4,
 
   useMotionSmear: false,
   motionSmearDirection: 'horizontal',
@@ -1890,6 +1905,13 @@ export const PRESETS: EffectPreset[] = [
     channelPacketLossBlockSize: 24,
     channelPacketLossAmount: 0.42,
     channelPacketLossShift: 28,
+
+    useFrameEcho: true,
+    frameEchoMode: 'horizontal',
+    frameEchoCopies: 4,
+    frameEchoOffset: 22,
+    frameEchoDecay: 0.5,
+    frameEchoJitter: 12,
 
     useMotionSmear: true,
     motionSmearDirection: 'horizontal',

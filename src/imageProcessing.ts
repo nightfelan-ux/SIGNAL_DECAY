@@ -5,6 +5,7 @@ import { applyChromatic } from './effects/chromatic';
 import { applyCodecDamage } from './effects/codecDamage';
 import { applyDataOverlay } from './effects/dataOverlay';
 import { applyDithering } from './effects/dither';
+import { applyFrameEcho } from './effects/frameEcho';
 import { applyHudFrame } from './effects/hudFrame';
 import { applyNoise } from './effects/noise';
 import { applyPanelLayout } from './effects/panelLayout';
@@ -424,6 +425,17 @@ export function processImage({
         activeSeed,
         'channel-packet-loss'
       )
+    });
+  }
+
+  if (values.useFrameEcho && values.frameEchoDecay > 0) {
+    applyFrameEcho(ctx, width, height, {
+      mode: values.frameEchoMode,
+      copies: values.frameEchoCopies,
+      offset: values.frameEchoOffset,
+      decay: values.frameEchoDecay,
+      jitter: values.frameEchoJitter,
+      random: createSeededRandom(activeSeed, 'frame-echo')
     });
   }
 

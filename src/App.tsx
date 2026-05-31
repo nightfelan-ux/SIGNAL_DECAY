@@ -27,6 +27,7 @@ import type {
 import type { ChannelPacketLossChannel } from './effects/channelPacketLoss';
 import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
+import type { FrameEchoMode } from './effects/frameEcho';
 import type { ArtifactMaskMode } from './effects/artifactMask';
 import type { HudFrameStyle } from './effects/hudFrame';
 import type { MotionSmearDirection } from './effects/motionSmear';
@@ -245,6 +246,14 @@ function App() {
     channelPacketLossShift,
     setChannelPacketLossShift
   ] = useState(12);
+
+  const [useFrameEcho, setUseFrameEcho] = useState(false);
+  const [frameEchoMode, setFrameEchoMode] =
+    useState<FrameEchoMode>('horizontal');
+  const [frameEchoCopies, setFrameEchoCopies] = useState(3);
+  const [frameEchoOffset, setFrameEchoOffset] = useState(18);
+  const [frameEchoDecay, setFrameEchoDecay] = useState(0.55);
+  const [frameEchoJitter, setFrameEchoJitter] = useState(4);
 
   const [useMotionSmear, setUseMotionSmear] =
     useState(false);
@@ -549,6 +558,13 @@ function App() {
       channelPacketLossAmount,
       channelPacketLossShift,
 
+      useFrameEcho,
+      frameEchoMode,
+      frameEchoCopies,
+      frameEchoOffset,
+      frameEchoDecay,
+      frameEchoJitter,
+
       useMotionSmear,
       motionSmearDirection,
       motionSmearLength,
@@ -686,6 +702,12 @@ function App() {
       channelPacketLossBlockSize,
       channelPacketLossAmount,
       channelPacketLossShift,
+      useFrameEcho,
+      frameEchoMode,
+      frameEchoCopies,
+      frameEchoOffset,
+      frameEchoDecay,
+      frameEchoJitter,
       useMotionSmear,
       motionSmearDirection,
       motionSmearLength,
@@ -829,6 +851,13 @@ function App() {
       setChannelPacketLossBlockSize,
       setChannelPacketLossAmount,
       setChannelPacketLossShift,
+
+      setUseFrameEcho,
+      setFrameEchoMode,
+      setFrameEchoCopies,
+      setFrameEchoOffset,
+      setFrameEchoDecay,
+      setFrameEchoJitter,
 
       setUseMotionSmear,
       setMotionSmearDirection,
@@ -1886,6 +1915,7 @@ function EffectSections({
         values.useGlitch,
         values.useCodecDamage,
         values.useChannelPacketLoss,
+        values.useFrameEcho,
         values.useMotionSmear,
         values.useChromatic,
         values.useNoise,
@@ -3307,6 +3337,89 @@ function EffectSections({
 
       <div style={orderedSectionStyle(35, 'distortion')}>
         <UiCheckbox
+          checked={values.useFrameEcho}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseFrameEcho(checked);
+            });
+          }}
+          label="Frame Echo"
+        />
+
+        {values.useFrameEcho && (
+          <>
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.frameEchoMode}
+              options={[
+                { value: 'horizontal', label: 'HORIZONTAL' },
+                { value: 'vertical', label: 'VERTICAL' },
+                { value: 'diagonal', label: 'DIAGONAL' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setFrameEchoMode(value as FrameEchoMode);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>COPIES</div>
+
+            <UiSlider
+              min={1}
+              max={8}
+              step={1}
+              value={values.frameEchoCopies}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setFrameEchoCopies(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>OFFSET</div>
+
+            <UiSlider
+              min={0}
+              max={128}
+              step={1}
+              value={values.frameEchoOffset}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setFrameEchoOffset(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>DECAY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.frameEchoDecay}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setFrameEchoDecay(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>JITTER</div>
+
+            <UiSlider
+              min={0}
+              max={64}
+              step={1}
+              value={values.frameEchoJitter}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setFrameEchoJitter(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={orderedSectionStyle(36, 'distortion')}>
+        <UiCheckbox
           checked={values.useMotionSmear}
           onChange={(checked) => {
             runWithoutPanelJump(() => {
@@ -3472,7 +3585,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(36, 'distortion')}>
+      <div style={orderedSectionStyle(38, 'distortion')}>
         <UiCheckbox
           checked={values.useNoise}
           onChange={(checked) => {
@@ -3501,7 +3614,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(38, 'distortion')}>
+      <div style={orderedSectionStyle(39, 'distortion')}>
         <UiCheckbox
           checked={values.useScanlines}
           onChange={(checked) => {
