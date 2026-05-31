@@ -30,6 +30,7 @@ import type { DataOverlayMode } from './effects/dataOverlay';
 import type { FrameEchoMode } from './effects/frameEcho';
 import type { ArtifactMaskMode } from './effects/artifactMask';
 import type { HudFrameStyle } from './effects/hudFrame';
+import type { LumaDisplacementMode } from './effects/lumaDisplacement';
 import type { MotionSmearDirection } from './effects/motionSmear';
 import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
@@ -41,6 +42,7 @@ import type {
   RegionalPaletteMode,
   RegionalPaletteZone
 } from './effects/regionalPalette';
+import type { ScanDriftDirection } from './effects/scanDrift';
 import type { SignalWavesMode } from './effects/signalWaves';
 import { processImage as processCanvasImage } from './imageProcessing';
 import { createSeed } from './utils/random';
@@ -254,6 +256,38 @@ function App() {
   const [frameEchoOffset, setFrameEchoOffset] = useState(18);
   const [frameEchoDecay, setFrameEchoDecay] = useState(0.55);
   const [frameEchoJitter, setFrameEchoJitter] = useState(4);
+
+  const [
+    useLumaDisplacement,
+    setUseLumaDisplacement
+  ] = useState(false);
+  const [
+    lumaDisplacementMode,
+    setLumaDisplacementMode
+  ] = useState<LumaDisplacementMode>('split');
+  const [
+    lumaDisplacementAmount,
+    setLumaDisplacementAmount
+  ] = useState(18);
+  const [
+    lumaDisplacementThreshold,
+    setLumaDisplacementThreshold
+  ] = useState(128);
+  const [
+    lumaDisplacementJitter,
+    setLumaDisplacementJitter
+  ] = useState(3);
+
+  const [useScanDrift, setUseScanDrift] =
+    useState(false);
+  const [scanDriftDirection, setScanDriftDirection] =
+    useState<ScanDriftDirection>('horizontal');
+  const [scanDriftAmount, setScanDriftAmount] =
+    useState(18);
+  const [scanDriftBandSize, setScanDriftBandSize] =
+    useState(18);
+  const [scanDriftChaos, setScanDriftChaos] =
+    useState(0.35);
 
   const [useMotionSmear, setUseMotionSmear] =
     useState(false);
@@ -565,6 +599,18 @@ function App() {
       frameEchoDecay,
       frameEchoJitter,
 
+      useLumaDisplacement,
+      lumaDisplacementMode,
+      lumaDisplacementAmount,
+      lumaDisplacementThreshold,
+      lumaDisplacementJitter,
+
+      useScanDrift,
+      scanDriftDirection,
+      scanDriftAmount,
+      scanDriftBandSize,
+      scanDriftChaos,
+
       useMotionSmear,
       motionSmearDirection,
       motionSmearLength,
@@ -708,6 +754,16 @@ function App() {
       frameEchoOffset,
       frameEchoDecay,
       frameEchoJitter,
+      useLumaDisplacement,
+      lumaDisplacementMode,
+      lumaDisplacementAmount,
+      lumaDisplacementThreshold,
+      lumaDisplacementJitter,
+      useScanDrift,
+      scanDriftDirection,
+      scanDriftAmount,
+      scanDriftBandSize,
+      scanDriftChaos,
       useMotionSmear,
       motionSmearDirection,
       motionSmearLength,
@@ -858,6 +914,18 @@ function App() {
       setFrameEchoOffset,
       setFrameEchoDecay,
       setFrameEchoJitter,
+
+      setUseLumaDisplacement,
+      setLumaDisplacementMode,
+      setLumaDisplacementAmount,
+      setLumaDisplacementThreshold,
+      setLumaDisplacementJitter,
+
+      setUseScanDrift,
+      setScanDriftDirection,
+      setScanDriftAmount,
+      setScanDriftBandSize,
+      setScanDriftChaos,
 
       setUseMotionSmear,
       setMotionSmearDirection,
@@ -1916,6 +1984,8 @@ function EffectSections({
         values.useCodecDamage,
         values.useChannelPacketLoss,
         values.useFrameEcho,
+        values.useLumaDisplacement,
+        values.useScanDrift,
         values.useMotionSmear,
         values.useChromatic,
         values.useNoise,
@@ -3420,6 +3490,149 @@ function EffectSections({
 
       <div style={orderedSectionStyle(36, 'distortion')}>
         <UiCheckbox
+          checked={values.useLumaDisplacement}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseLumaDisplacement(checked);
+            });
+          }}
+          label="Luma Displacement"
+        />
+
+        {values.useLumaDisplacement && (
+          <>
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.lumaDisplacementMode}
+              options={[
+                { value: 'horizontal', label: 'HORIZONTAL' },
+                { value: 'vertical', label: 'VERTICAL' },
+                { value: 'split', label: 'SPLIT' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setLumaDisplacementMode(
+                  value as LumaDisplacementMode
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>AMOUNT</div>
+
+            <UiSlider
+              min={0}
+              max={96}
+              step={1}
+              value={values.lumaDisplacementAmount}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setLumaDisplacementAmount(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>THRESHOLD</div>
+
+            <UiSlider
+              min={0}
+              max={255}
+              step={1}
+              value={values.lumaDisplacementThreshold}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setLumaDisplacementThreshold(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>JITTER</div>
+
+            <UiSlider
+              min={0}
+              max={48}
+              step={1}
+              value={values.lumaDisplacementJitter}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setLumaDisplacementJitter(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={orderedSectionStyle(37, 'distortion')}>
+        <UiCheckbox
+          checked={values.useScanDrift}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseScanDrift(checked);
+            });
+          }}
+          label="Scan Drift"
+        />
+
+        {values.useScanDrift && (
+          <>
+            <div style={sliderLabelStyle}>DIRECTION</div>
+
+            <UiSelect
+              value={values.scanDriftDirection}
+              options={[
+                { value: 'horizontal', label: 'HORIZONTAL' },
+                { value: 'vertical', label: 'VERTICAL' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setScanDriftDirection(
+                  value as ScanDriftDirection
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>AMOUNT</div>
+
+            <UiSlider
+              min={0}
+              max={128}
+              step={1}
+              value={values.scanDriftAmount}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setScanDriftAmount(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>BAND SIZE</div>
+
+            <UiSlider
+              min={1}
+              max={160}
+              step={1}
+              value={values.scanDriftBandSize}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setScanDriftBandSize(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>CHAOS</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.scanDriftChaos}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setScanDriftChaos(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={orderedSectionStyle(38, 'distortion')}>
+        <UiCheckbox
           checked={values.useMotionSmear}
           onChange={(checked) => {
             runWithoutPanelJump(() => {
@@ -3489,7 +3702,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(37, 'distortion')}>
+      <div style={orderedSectionStyle(39, 'distortion')}>
         <UiCheckbox
           checked={values.useChromatic}
           onChange={(checked) => {
@@ -3585,7 +3798,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(38, 'distortion')}>
+      <div style={orderedSectionStyle(40, 'distortion')}>
         <UiCheckbox
           checked={values.useNoise}
           onChange={(checked) => {
@@ -3614,7 +3827,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(39, 'distortion')}>
+      <div style={orderedSectionStyle(41, 'distortion')}>
         <UiCheckbox
           checked={values.useScanlines}
           onChange={(checked) => {

@@ -7,6 +7,7 @@ import { applyDataOverlay } from './effects/dataOverlay';
 import { applyDithering } from './effects/dither';
 import { applyFrameEcho } from './effects/frameEcho';
 import { applyHudFrame } from './effects/hudFrame';
+import { applyLumaDisplacement } from './effects/lumaDisplacement';
 import { applyNoise } from './effects/noise';
 import { applyPanelLayout } from './effects/panelLayout';
 import { applyPosterText } from './effects/posterText';
@@ -15,6 +16,7 @@ import { applyPixelSort } from './effects/pixelSort';
 import { applyPsx } from './effects/psx';
 import { applyRegionalPalette } from './effects/regionalPalette';
 import { applyScanlines } from './effects/scanlines';
+import { applyScanDrift } from './effects/scanDrift';
 import { applySignalWaves } from './effects/signalWaves';
 import { applyMotionSmear } from './effects/motionSmear';
 import type { EffectValues } from './effectTypes';
@@ -436,6 +438,32 @@ export function processImage({
       decay: values.frameEchoDecay,
       jitter: values.frameEchoJitter,
       random: createSeededRandom(activeSeed, 'frame-echo')
+    });
+  }
+
+  if (
+    values.useLumaDisplacement &&
+    values.lumaDisplacementAmount > 0
+  ) {
+    applyLumaDisplacement(ctx, width, height, {
+      mode: values.lumaDisplacementMode,
+      amount: values.lumaDisplacementAmount,
+      threshold: values.lumaDisplacementThreshold,
+      jitter: values.lumaDisplacementJitter,
+      random: createSeededRandom(
+        activeSeed,
+        'luma-displacement'
+      )
+    });
+  }
+
+  if (values.useScanDrift && values.scanDriftAmount > 0) {
+    applyScanDrift(ctx, width, height, {
+      direction: values.scanDriftDirection,
+      amount: values.scanDriftAmount,
+      bandSize: values.scanDriftBandSize,
+      chaos: values.scanDriftChaos,
+      random: createSeededRandom(activeSeed, 'scan-drift')
     });
   }
 

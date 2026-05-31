@@ -5,6 +5,7 @@ import type { FrameEchoMode } from './effects/frameEcho';
 import type { PatternDitherShape } from './effects/patternDither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
+import type { LumaDisplacementMode } from './effects/lumaDisplacement';
 import type { MotionSmearDirection } from './effects/motionSmear';
 import type { SignalWavesMode } from './effects/signalWaves';
 import type { PanelLayoutMode } from './effects/panelLayout';
@@ -16,6 +17,7 @@ import type {
   RegionalPaletteMode,
   RegionalPaletteZone
 } from './effects/regionalPalette';
+import type { ScanDriftDirection } from './effects/scanDrift';
 
 export interface EffectPreset {
   name: string;
@@ -86,6 +88,18 @@ export interface EffectPreset {
   frameEchoOffset: number;
   frameEchoDecay: number;
   frameEchoJitter: number;
+
+  useLumaDisplacement: boolean;
+  lumaDisplacementMode: LumaDisplacementMode;
+  lumaDisplacementAmount: number;
+  lumaDisplacementThreshold: number;
+  lumaDisplacementJitter: number;
+
+  useScanDrift: boolean;
+  scanDriftDirection: ScanDriftDirection;
+  scanDriftAmount: number;
+  scanDriftBandSize: number;
+  scanDriftChaos: number;
 
   useMotionSmear: boolean;
   motionSmearDirection: MotionSmearDirection;
@@ -248,6 +262,18 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   frameEchoOffset: 18,
   frameEchoDecay: 0.55,
   frameEchoJitter: 4,
+
+  useLumaDisplacement: false,
+  lumaDisplacementMode: 'split',
+  lumaDisplacementAmount: 18,
+  lumaDisplacementThreshold: 128,
+  lumaDisplacementJitter: 3,
+
+  useScanDrift: false,
+  scanDriftDirection: 'horizontal',
+  scanDriftAmount: 18,
+  scanDriftBandSize: 18,
+  scanDriftChaos: 0.35,
 
   useMotionSmear: false,
   motionSmearDirection: 'horizontal',
@@ -2034,5 +2060,168 @@ export const PRESETS: EffectPreset[] = [
 
     useScanlines: true,
     scanlineIntensity: 0.16
+  }),
+
+  createPreset('LUMA TEAR', {
+    usePalette: true,
+    colorStart: '#020103',
+    colorEnd: '#d6ff00',
+    steps: 5,
+
+    useDither: true,
+    ditherMode: 'ordered-bayer',
+    threshold: 146,
+
+    useLumaDisplacement: true,
+    lumaDisplacementMode: 'split',
+    lumaDisplacementAmount: 42,
+    lumaDisplacementThreshold: 118,
+    lumaDisplacementJitter: 11,
+
+    useScanDrift: true,
+    scanDriftDirection: 'horizontal',
+    scanDriftAmount: 28,
+    scanDriftBandSize: 14,
+    scanDriftChaos: 0.48,
+
+    useChromatic: true,
+    chromaticOffset: 5,
+
+    useNoise: true,
+    noiseAmount: 18,
+
+    useScanlines: true,
+    scanlineIntensity: 0.2
+  }),
+
+  createPreset('SYNC SLIP', {
+    usePsx: true,
+    psxResolutionScale: 5,
+    psxColorLevels: 7,
+    psxWarpAmount: 3,
+    psxJitterAmount: 4,
+    psxDitherStrength: 0.52,
+    psxBlockSize: 14,
+    psxCompositeBlur: 1,
+    psxChromaBleed: 2,
+
+    useScanDrift: true,
+    scanDriftDirection: 'vertical',
+    scanDriftAmount: 52,
+    scanDriftBandSize: 22,
+    scanDriftChaos: 0.62,
+
+    useFrameEcho: true,
+    frameEchoMode: 'vertical',
+    frameEchoCopies: 3,
+    frameEchoOffset: 16,
+    frameEchoDecay: 0.42,
+    frameEchoJitter: 8,
+
+    useDataOverlay: true,
+    dataOverlayMode: 'warning',
+    dataOverlayDensity: 18,
+    dataOverlayFontSize: 10,
+    dataOverlayOpacity: 0.32,
+    dataOverlayColor: '#ff003c',
+
+    useHudFrame: true,
+    hudFrameStyle: 'corrupted-ui',
+    hudFrameOpacity: 0.5,
+    hudFrameColor: '#ff003c',
+    hudFrameShowGrid: false,
+    hudFrameShowLabels: true,
+    hudFrameShowCornerMarks: true
+  }),
+
+  createPreset('PACKET GHOST', {
+    usePalette: true,
+    colorStart: '#000707',
+    colorEnd: '#00c8ff',
+    steps: 6,
+
+    useCodecDamage: true,
+    codecDamageBlockSize: 18,
+    codecDamageAmount: 0.48,
+    codecDamageChromaShift: 7,
+    codecDamageColorDepth: 6,
+
+    useChannelPacketLoss: true,
+    channelPacketLossChannel: 'blue',
+    channelPacketLossBlockSize: 18,
+    channelPacketLossAmount: 0.56,
+    channelPacketLossShift: 38,
+
+    useFrameEcho: true,
+    frameEchoMode: 'diagonal',
+    frameEchoCopies: 5,
+    frameEchoOffset: 18,
+    frameEchoDecay: 0.46,
+    frameEchoJitter: 16,
+
+    useLumaDisplacement: true,
+    lumaDisplacementMode: 'horizontal',
+    lumaDisplacementAmount: 24,
+    lumaDisplacementThreshold: 138,
+    lumaDisplacementJitter: 6,
+
+    usePosterText: true,
+    posterTextContent: 'PACKET LOSS',
+    posterTextX: 50,
+    posterTextY: 12,
+    posterTextFont: 'lucida-console',
+    posterTextWeight: 700,
+    posterTextSize: 44,
+    posterTextTracking: 8,
+    posterTextOpacity: 0.54,
+    posterTextColor: '#00c8ff',
+    posterTextGlitch: true,
+    posterTextMode: 'blend'
+  }),
+
+  createPreset('BLACKBOX ECHO', {
+    usePanelLayout: true,
+    panelLayoutMode: 'center-diagnostics',
+    panelLayoutGap: 8,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#00ff99',
+    panelLayoutBackgroundColor: '#020403',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 64,
+    panelLayoutMirrorAlternate: false,
+
+    useSignalWaves: true,
+    signalWavesMode: 'topographic',
+    signalWavesFrequency: 16,
+    signalWavesAmplitude: 24,
+    signalWavesDensity: 20,
+    signalWavesOpacity: 0.44,
+    signalWavesColor: '#00ff99',
+    signalWavesReactToImage: true,
+
+    useLumaDisplacement: true,
+    lumaDisplacementMode: 'vertical',
+    lumaDisplacementAmount: 28,
+    lumaDisplacementThreshold: 104,
+    lumaDisplacementJitter: 8,
+
+    useMotionSmear: true,
+    motionSmearDirection: 'horizontal',
+    motionSmearLength: 42,
+    motionSmearDecay: 0.46,
+    motionSmearThreshold: 116,
+
+    useDataOverlay: true,
+    dataOverlayMode: 'image-info',
+    dataOverlayDensity: 20,
+    dataOverlayFontSize: 8,
+    dataOverlayOpacity: 0.3,
+    dataOverlayColor: '#00ff99',
+
+    useHudFrame: true,
+    hudFrameStyle: 'archive-frame',
+    hudFrameOpacity: 0.64,
+    hudFrameColor: '#00ff99'
   })
 ];

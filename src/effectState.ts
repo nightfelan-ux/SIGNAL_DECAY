@@ -178,6 +178,26 @@ export function restoreEffectsSnapshot(
   setters.setFrameEchoDecay(snapshot.frameEchoDecay);
   setters.setFrameEchoJitter(snapshot.frameEchoJitter);
 
+  setters.setUseLumaDisplacement(snapshot.useLumaDisplacement);
+  setters.setLumaDisplacementMode(
+    snapshot.lumaDisplacementMode
+  );
+  setters.setLumaDisplacementAmount(
+    snapshot.lumaDisplacementAmount
+  );
+  setters.setLumaDisplacementThreshold(
+    snapshot.lumaDisplacementThreshold
+  );
+  setters.setLumaDisplacementJitter(
+    snapshot.lumaDisplacementJitter
+  );
+
+  setters.setUseScanDrift(snapshot.useScanDrift);
+  setters.setScanDriftDirection(snapshot.scanDriftDirection);
+  setters.setScanDriftAmount(snapshot.scanDriftAmount);
+  setters.setScanDriftBandSize(snapshot.scanDriftBandSize);
+  setters.setScanDriftChaos(snapshot.scanDriftChaos);
+
   setters.setUseMotionSmear(snapshot.useMotionSmear);
   setters.setMotionSmearDirection(snapshot.motionSmearDirection);
   setters.setMotionSmearLength(snapshot.motionSmearLength);
@@ -362,6 +382,18 @@ export function clearEffectSettings(setters: EffectStateSetters) {
   setters.setFrameEchoOffset(18);
   setters.setFrameEchoDecay(0.55);
   setters.setFrameEchoJitter(4);
+
+  setters.setUseLumaDisplacement(false);
+  setters.setLumaDisplacementMode('split');
+  setters.setLumaDisplacementAmount(18);
+  setters.setLumaDisplacementThreshold(128);
+  setters.setLumaDisplacementJitter(3);
+
+  setters.setUseScanDrift(false);
+  setters.setScanDriftDirection('horizontal');
+  setters.setScanDriftAmount(18);
+  setters.setScanDriftBandSize(18);
+  setters.setScanDriftChaos(0.35);
 
   setters.setUseMotionSmear(false);
   setters.setMotionSmearDirection('horizontal');
@@ -560,6 +592,26 @@ export function applyEffectPreset(
   setters.setFrameEchoOffset(preset.frameEchoOffset);
   setters.setFrameEchoDecay(preset.frameEchoDecay);
   setters.setFrameEchoJitter(preset.frameEchoJitter);
+
+  setters.setUseLumaDisplacement(preset.useLumaDisplacement);
+  setters.setLumaDisplacementMode(
+    preset.lumaDisplacementMode
+  );
+  setters.setLumaDisplacementAmount(
+    preset.lumaDisplacementAmount
+  );
+  setters.setLumaDisplacementThreshold(
+    preset.lumaDisplacementThreshold
+  );
+  setters.setLumaDisplacementJitter(
+    preset.lumaDisplacementJitter
+  );
+
+  setters.setUseScanDrift(preset.useScanDrift);
+  setters.setScanDriftDirection(preset.scanDriftDirection);
+  setters.setScanDriftAmount(preset.scanDriftAmount);
+  setters.setScanDriftBandSize(preset.scanDriftBandSize);
+  setters.setScanDriftChaos(preset.scanDriftChaos);
 
   setters.setUseMotionSmear(preset.useMotionSmear);
   setters.setMotionSmearDirection(preset.motionSmearDirection);

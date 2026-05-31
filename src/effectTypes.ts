@@ -9,6 +9,7 @@ import type { DitherMode } from './effects/dither';
 import type { FrameEchoMode } from './effects/frameEcho';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
+import type { LumaDisplacementMode } from './effects/lumaDisplacement';
 import type { MotionSmearDirection } from './effects/motionSmear';
 import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
@@ -20,6 +21,7 @@ import type {
   RegionalPaletteMode,
   RegionalPaletteZone
 } from './effects/regionalPalette';
+import type { ScanDriftDirection } from './effects/scanDrift';
 import type { SignalWavesMode } from './effects/signalWaves';
 
 type Setter<T> = Dispatch<SetStateAction<T>>;
@@ -95,6 +97,18 @@ export type EffectValues = {
   frameEchoOffset: number;
   frameEchoDecay: number;
   frameEchoJitter: number;
+
+  useLumaDisplacement: boolean;
+  lumaDisplacementMode: LumaDisplacementMode;
+  lumaDisplacementAmount: number;
+  lumaDisplacementThreshold: number;
+  lumaDisplacementJitter: number;
+
+  useScanDrift: boolean;
+  scanDriftDirection: ScanDriftDirection;
+  scanDriftAmount: number;
+  scanDriftBandSize: number;
+  scanDriftChaos: number;
 
   useMotionSmear: boolean;
   motionSmearDirection: MotionSmearDirection;
@@ -257,6 +271,18 @@ export type EffectSetters = {
   setFrameEchoOffset: Setter<number>;
   setFrameEchoDecay: Setter<number>;
   setFrameEchoJitter: Setter<number>;
+
+  setUseLumaDisplacement: Setter<boolean>;
+  setLumaDisplacementMode: Setter<LumaDisplacementMode>;
+  setLumaDisplacementAmount: Setter<number>;
+  setLumaDisplacementThreshold: Setter<number>;
+  setLumaDisplacementJitter: Setter<number>;
+
+  setUseScanDrift: Setter<boolean>;
+  setScanDriftDirection: Setter<ScanDriftDirection>;
+  setScanDriftAmount: Setter<number>;
+  setScanDriftBandSize: Setter<number>;
+  setScanDriftChaos: Setter<number>;
 
   setUseMotionSmear: Setter<boolean>;
   setMotionSmearDirection: Setter<MotionSmearDirection>;
