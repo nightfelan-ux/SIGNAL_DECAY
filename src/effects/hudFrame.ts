@@ -2,6 +2,7 @@ export type HudFrameStyle =
   | 'scan-frame'
   | 'archive-frame'
   | 'targeting-frame'
+  | 'panel-labels'
   | 'corrupted-ui'
   | 'minimal';
 
@@ -50,6 +51,8 @@ export function applyHudFrame(
 
   if (options.style === 'targeting-frame') {
     drawTargetingFrame(ctx, width, height, x, y, frameWidth, frameHeight);
+  } else if (options.style === 'panel-labels') {
+    drawPanelLabelsFrame(ctx, x, y, frameWidth, frameHeight);
   } else if (options.style === 'archive-frame') {
     drawArchiveFrame(ctx, x, y, frameWidth, frameHeight);
   } else if (options.style === 'corrupted-ui') {
@@ -298,4 +301,40 @@ function clamp(
   max: number
 ) {
   return Math.max(min, Math.min(max, value));
+}
+
+function drawPanelLabelsFrame(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
+  drawMinimalFrame(ctx, x, y, width, height);
+
+  const labelWidth = Math.max(72, width * 0.16);
+  const labelHeight = Math.max(16, height * 0.035);
+  const pad = Math.max(8, labelHeight * 0.45);
+  const labels = [
+    { text: 'INPUT A', x: x + pad, y: y + pad },
+    { text: 'FOCUS NODE', x: x + width - labelWidth - pad, y: y + pad },
+    { text: 'SIGNAL BODY', x: x + pad, y: y + height - labelHeight - pad },
+    {
+      text: 'OUTPUT MONITOR',
+      x: x + width - labelWidth - pad,
+      y: y + height - labelHeight - pad
+    }
+  ];
+
+  labels.forEach((label) => {
+    ctx.strokeRect(label.x, label.y, labelWidth, labelHeight);
+    ctx.fillText(label.text, label.x + pad * 0.5, label.y + pad * 0.28);
+  });
+
+  ctx.beginPath();
+  ctx.moveTo(x + width * 0.5, y);
+  ctx.lineTo(x + width * 0.5, y + height);
+  ctx.moveTo(x, y + height * 0.5);
+  ctx.lineTo(x + width, y + height * 0.5);
+  ctx.stroke();
 }

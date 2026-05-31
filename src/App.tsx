@@ -20,21 +20,25 @@ import type {
   EffectStateSetters,
   EffectValues,
   EffectsSnapshot,
+  ArtifactMaskTarget,
   AsciiMode,
   PixelSortDirection,
   PixelSortMode
 } from './effectTypes';
 import type { ChannelPacketLossChannel } from './effects/channelPacketLoss';
+import type { CodecDamageMode } from './effects/codecDamage';
 import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { FrameEchoMode } from './effects/frameEcho';
 import type { ArtifactMaskMode } from './effects/artifactMask';
 import type { HudFrameStyle } from './effects/hudFrame';
 import type { LumaDisplacementMode } from './effects/lumaDisplacement';
+import type { MachineViewMode } from './effects/machineView';
 import type { MotionSmearDirection } from './effects/motionSmear';
 import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
   PosterTextFont,
+  PosterTextLayout,
   PosterTextMode,
   PosterTextPanelAnchor,
 } from './effects/posterText';
@@ -56,12 +60,84 @@ import { UiColorInput } from './components/UiColorInput';
 type ExportFormat = 'png' | 'jpeg';
 type ExportDpi = 72 | 150 | 300;
 type ExportScale = 1 | 2 | 3 | 4;
+type ExportSizePreset =
+  | 'source'
+  | 'poster-a4'
+  | 'poster-a3'
+  | 'square'
+  | 'story'
+  | 'social-portrait'
+  | 'video-wide';
+
+const USER_PRESETS_STORAGE_KEY = 'signal-decay-user-presets-v1';
+
+const EXPORT_SIZE_PRESETS: Record<
+  ExportSizePreset,
+  {
+    label: string;
+    width?: number;
+    height?: number;
+    inches?: {
+      width: number;
+      height: number;
+    };
+  }
+> = {
+  source: { label: 'SOURCE' },
+  'poster-a4': {
+    label: 'A4 POSTER',
+    inches: { width: 8.27, height: 11.69 }
+  },
+  'poster-a3': {
+    label: 'A3 POSTER',
+    inches: { width: 11.69, height: 16.54 }
+  },
+  square: { label: 'SQUARE 1:1', width: 1080, height: 1080 },
+  story: { label: 'STORY 9:16', width: 1080, height: 1920 },
+  'social-portrait': {
+    label: 'PORTRAIT 4:5',
+    width: 1080,
+    height: 1350
+  },
+  'video-wide': { label: 'VIDEO 16:9', width: 1920, height: 1080 }
+};
+
+function getExportDimensions(
+  sourceWidth: number,
+  sourceHeight: number,
+  dpi: ExportDpi,
+  scale: ExportScale,
+  sizePreset: ExportSizePreset
+) {
+  const preset = EXPORT_SIZE_PRESETS[sizePreset];
+  const sourceScale = (dpi / 72) * scale;
+
+  if (preset.inches) {
+    return {
+      width: Math.round(preset.inches.width * dpi * scale),
+      height: Math.round(preset.inches.height * dpi * scale)
+    };
+  }
+
+  if (preset.width && preset.height) {
+    return {
+      width: Math.round(preset.width * scale),
+      height: Math.round(preset.height * scale)
+    };
+  }
+
+  return {
+    width: Math.round(sourceWidth * sourceScale),
+    height: Math.round(sourceHeight * sourceScale)
+  };
+}
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewAreaRef = useRef<HTMLDivElement>(null);
   const tempCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const presetImportInputRef = useRef<HTMLInputElement>(null);
 
   const dragStartRef = useRef({ x: 0, y: 0 });
   const panStartRef = useRef({ x: 0, y: 0 });
@@ -79,6 +155,23 @@ function App() {
 
   const [selectedPresetName, setSelectedPresetName] =
     useState('CUSTOM');
+  const [userPresets, setUserPresets] = useState<EffectPreset[]>(
+    () => {
+      const saved = window.localStorage.getItem(
+        USER_PRESETS_STORAGE_KEY
+      );
+
+      if (!saved) return [];
+
+      try {
+        const parsed = JSON.parse(saved);
+
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+  );
 
   const [lastEffectsSnapshot, setLastEffectsSnapshot] =
     useState<EffectsSnapshot | null>(null);
@@ -94,6 +187,8 @@ function App() {
     useState<ExportDpi>(72);
   const [exportScale, setExportScale] =
     useState<ExportScale>(1);
+  const [exportSizePreset, setExportSizePreset] =
+    useState<ExportSizePreset>('source');
   const [
     exportTransparentBackground,
     setExportTransparentBackground
@@ -199,6 +294,8 @@ function App() {
     useState(false);
   const [artifactMaskMode, setArtifactMaskMode] =
     useState<ArtifactMaskMode>('all');
+  const [artifactMaskTarget, setArtifactMaskTarget] =
+    useState<ArtifactMaskTarget>('all-distortion');
   const [
     artifactMaskThreshold,
     setArtifactMaskThreshold
@@ -214,6 +311,8 @@ function App() {
 
   const [useCodecDamage, setUseCodecDamage] =
     useState(false);
+  const [codecDamageMode, setCodecDamageMode] =
+    useState<CodecDamageMode>('blocks');
   const [
     codecDamageBlockSize,
     setCodecDamageBlockSize
@@ -353,9 +452,34 @@ function App() {
   const [dataOverlayCustomText, setDataOverlayCustomText] =
     useState('SIGNAL UNSTABLE');
 
+  const [useMachineView, setUseMachineView] =
+    useState(false);
+  const [machineViewMode, setMachineViewMode] =
+    useState<MachineViewMode>('tracking');
+  const [machineViewCount, setMachineViewCount] =
+    useState(4);
+  const [
+    machineViewSensitivity,
+    setMachineViewSensitivity
+  ] = useState(0.35);
+  const [machineViewOpacity, setMachineViewOpacity] =
+    useState(0.72);
+  const [machineViewColor, setMachineViewColor] =
+    useState('#00ff99');
+  const [
+    machineViewShowLabels,
+    setMachineViewShowLabels
+  ] = useState(true);
+
   const [usePosterText, setUsePosterText] = useState(false);
   const [posterTextContent, setPosterTextContent] =
     useState('SIGNAL DECAY');
+  const [posterTextSubtitle, setPosterTextSubtitle] =
+    useState('TRANSMISSION ERROR');
+  const [posterTextCaption, setPosterTextCaption] =
+    useState('ARCHIVE INDEX 00');
+  const [posterTextLayout, setPosterTextLayout] =
+    useState<PosterTextLayout>('single');
   const [posterTextX, setPosterTextX] = useState(50);
   const [posterTextY, setPosterTextY] = useState(50);
   const [posterTextVertical, setPosterTextVertical] =
@@ -523,15 +647,21 @@ function App() {
   const imageSizeInfo = useMemo(() => {
     if (!originalImage) return null;
 
-    const scale = (exportDpi / 72) * exportScale;
+    const dimensions = getExportDimensions(
+      originalImage.width,
+      originalImage.height,
+      exportDpi,
+      exportScale,
+      exportSizePreset
+    );
 
     return {
       sourceWidth: originalImage.width,
       sourceHeight: originalImage.height,
-      exportWidth: Math.round(originalImage.width * scale),
-      exportHeight: Math.round(originalImage.height * scale)
+      exportWidth: dimensions.width,
+      exportHeight: dimensions.height
     };
-  }, [originalImage, exportDpi, exportScale]);
+  }, [originalImage, exportDpi, exportScale, exportSizePreset]);
 
   const activeSeed = useSeed ? seed : liveSeed;
 
@@ -576,6 +706,7 @@ function App() {
 
       useArtifactMask,
       artifactMaskMode,
+      artifactMaskTarget,
       artifactMaskThreshold,
 
       useGlitch,
@@ -586,6 +717,7 @@ function App() {
       edgeGlitchOnly,
 
       useCodecDamage,
+      codecDamageMode,
       codecDamageBlockSize,
       codecDamageAmount,
       codecDamageChromaShift,
@@ -679,8 +811,19 @@ function App() {
       dataOverlayColor,
       dataOverlayCustomText,
 
+      useMachineView,
+      machineViewMode,
+      machineViewCount,
+      machineViewSensitivity,
+      machineViewOpacity,
+      machineViewColor,
+      machineViewShowLabels,
+
       usePosterText,
       posterTextContent,
+      posterTextSubtitle,
+      posterTextCaption,
+      posterTextLayout,
       posterTextX,
       posterTextY,
       posterTextVertical,
@@ -737,6 +880,7 @@ function App() {
       threshold,
       useArtifactMask,
       artifactMaskMode,
+      artifactMaskTarget,
       artifactMaskThreshold,
       useGlitch,
       glitch,
@@ -745,6 +889,7 @@ function App() {
       glitchOverrideDither,
       edgeGlitchOnly,
       useCodecDamage,
+      codecDamageMode,
       codecDamageBlockSize,
       codecDamageAmount,
       codecDamageChromaShift,
@@ -824,8 +969,18 @@ function App() {
       dataOverlayOpacity,
       dataOverlayColor,
       dataOverlayCustomText,
+      useMachineView,
+      machineViewMode,
+      machineViewCount,
+      machineViewSensitivity,
+      machineViewOpacity,
+      machineViewColor,
+      machineViewShowLabels,
       usePosterText,
       posterTextContent,
+      posterTextSubtitle,
+      posterTextCaption,
+      posterTextLayout,
       posterTextX,
       posterTextY,
       posterTextVertical,
@@ -894,6 +1049,7 @@ function App() {
 
       setUseArtifactMask,
       setArtifactMaskMode,
+      setArtifactMaskTarget,
       setArtifactMaskThreshold,
 
       setUseGlitch,
@@ -904,6 +1060,7 @@ function App() {
       setEdgeGlitchOnly,
 
       setUseCodecDamage,
+      setCodecDamageMode,
       setCodecDamageBlockSize,
       setCodecDamageAmount,
       setCodecDamageChromaShift,
@@ -997,8 +1154,19 @@ function App() {
       setDataOverlayColor,
       setDataOverlayCustomText,
 
+      setUseMachineView,
+      setMachineViewMode,
+      setMachineViewCount,
+      setMachineViewSensitivity,
+      setMachineViewOpacity,
+      setMachineViewColor,
+      setMachineViewShowLabels,
+
       setUsePosterText,
       setPosterTextContent,
+      setPosterTextSubtitle,
+      setPosterTextCaption,
+      setPosterTextLayout,
       setPosterTextX,
       setPosterTextY,
       setPosterTextVertical,
@@ -1062,15 +1230,21 @@ function App() {
 
     if (!canvas) return;
 
-    const scale = (exportDpi / 72) * exportScale;
-
     const exportCanvas = document.createElement('canvas');
     const exportCtx = exportCanvas.getContext('2d');
 
     if (!exportCtx) return;
 
-    exportCanvas.width = Math.round(canvas.width * scale);
-    exportCanvas.height = Math.round(canvas.height * scale);
+    const dimensions = getExportDimensions(
+      canvas.width,
+      canvas.height,
+      exportDpi,
+      exportScale,
+      exportSizePreset
+    );
+
+    exportCanvas.width = dimensions.width;
+    exportCanvas.height = dimensions.height;
 
     exportCtx.imageSmoothingEnabled = false;
 
@@ -1087,12 +1261,25 @@ function App() {
       );
     }
 
+    const sourceAspect = canvas.width / canvas.height;
+    const exportAspect = exportCanvas.width / exportCanvas.height;
+    const cropWidth =
+      sourceAspect > exportAspect
+        ? Math.round(canvas.height * exportAspect)
+        : canvas.width;
+    const cropHeight =
+      sourceAspect > exportAspect
+        ? canvas.height
+        : Math.round(canvas.width / exportAspect);
+    const cropX = Math.round((canvas.width - cropWidth) / 2);
+    const cropY = Math.round((canvas.height - cropHeight) / 2);
+
     exportCtx.drawImage(
       canvas,
-      0,
-      0,
-      canvas.width,
-      canvas.height,
+      cropX,
+      cropY,
+      cropWidth,
+      cropHeight,
       0,
       0,
       exportCanvas.width,
@@ -1113,7 +1300,7 @@ function App() {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '') || 'custom';
 
-    link.download = `signal-decay-${presetSlug}-${exportDpi}dpi-${exportScale}x-${Date.now()}.${extension}`;
+    link.download = `signal-decay-${presetSlug}-${exportSizePreset}-${exportDpi}dpi-${exportScale}x-${Date.now()}.${extension}`;
     link.href =
       quality === undefined
         ? exportCanvas.toDataURL(mimeType)
@@ -1124,6 +1311,7 @@ function App() {
     exportDpi,
     exportFormat,
     exportScale,
+    exportSizePreset,
     exportTransparentBackground,
     selectedPresetName
   ]);
@@ -1132,6 +1320,122 @@ function App() {
     applyEffectPreset(preset, effectSetters);
     setLastEffectsSnapshot(null);
   }, [effectSetters]);
+
+  const availablePresets = useMemo(
+    () => [
+      ...PRESETS.map((preset) => ({
+        preset,
+        group: 'BUILT IN'
+      })),
+      ...userPresets.map((preset) => ({
+        preset,
+        group: 'USER'
+      }))
+    ],
+    [userPresets]
+  );
+
+  const saveUserPreset = useCallback(() => {
+    const name = window.prompt(
+      'Preset name',
+      selectedPresetName === 'CUSTOM'
+        ? 'CUSTOM PRESET'
+        : selectedPresetName
+    );
+
+    if (!name?.trim()) return;
+
+    const preset: EffectPreset = {
+      name: name.trim().toUpperCase(),
+      ...effectValues
+    };
+
+    setUserPresets((current) => [
+      ...current.filter((item) => item.name !== preset.name),
+      preset
+    ]);
+    setSelectedPresetName(preset.name);
+  }, [effectValues, selectedPresetName]);
+
+  const exportCurrentPreset = useCallback(() => {
+    const preset: EffectPreset = {
+      name:
+        selectedPresetName === 'CUSTOM'
+          ? 'CUSTOM PRESET'
+          : selectedPresetName,
+      ...effectValues
+    };
+    const blob = new Blob(
+      [JSON.stringify(preset, null, 2)],
+      { type: 'application/json' }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const presetSlug = preset.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'custom';
+
+    link.download = `signal-decay-preset-${presetSlug}.json`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [effectValues, selectedPresetName]);
+
+  const exportUserPresetPack = useCallback(() => {
+    if (userPresets.length === 0) return;
+
+    const blob = new Blob(
+      [JSON.stringify(userPresets, null, 2)],
+      { type: 'application/json' }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.download = `signal-decay-user-presets-${Date.now()}.json`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [userPresets]);
+
+  const importPresetFile = useCallback(
+    (file: File) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result));
+          const presets = Array.isArray(parsed) ? parsed : [parsed];
+          const imported = presets.filter(
+            (preset): preset is EffectPreset =>
+              Boolean(preset?.name)
+          );
+
+          if (imported.length === 0) return;
+
+          setUserPresets((current) => {
+            const importedNames = new Set(
+              imported.map((preset) => preset.name)
+            );
+
+            return [
+              ...current.filter(
+                (preset) => !importedNames.has(preset.name)
+              ),
+              ...imported
+            ];
+          });
+
+          applyPreset(imported[0]);
+        } catch {
+          window.alert('Preset JSON could not be imported.');
+        }
+      };
+
+      reader.readAsText(file);
+    },
+    [applyPreset]
+  );
 
   const processImage = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1297,6 +1601,13 @@ function App() {
   const changeSeed = useCallback((delta: number) => {
     setSeed((prev) => prev + delta);
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      USER_PRESETS_STORAGE_KEY,
+      JSON.stringify(userPresets)
+    );
+  }, [userPresets]);
 
   useEffect(() => {
     if (originalImage) {
@@ -1516,9 +1827,9 @@ function App() {
                 value: 'CUSTOM',
                 label: 'CUSTOM'
               },
-              ...PRESETS.map((preset) => ({
+              ...availablePresets.map(({ preset, group }) => ({
                 value: preset.name,
-                label: preset.name
+                label: `${group} / ${preset.name}`
               }))
             ]}
             onChange={(value) => {
@@ -1531,9 +1842,9 @@ function App() {
                 return;
               }
 
-              const preset = PRESETS.find(
-                (item) => item.name === value
-              );
+              const preset = availablePresets.find(
+                (item) => item.preset.name === value
+              )?.preset;
 
               if (!preset) {
                 return;
@@ -1542,6 +1853,76 @@ function App() {
               applyPreset(preset);
             }}
           />
+
+          <input
+            ref={presetImportInputRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+
+              if (file) {
+                importPresetFile(file);
+              }
+
+              event.target.value = '';
+            }}
+          />
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 8,
+              marginTop: 10
+            }}
+          >
+            <button
+              onClick={saveUserPreset}
+              style={{ ...buttonStyle, padding: 8 }}
+            >
+              SAVE PRESET
+            </button>
+
+            <button
+              onClick={exportCurrentPreset}
+              style={{ ...buttonStyle, padding: 8 }}
+            >
+              EXPORT JSON
+            </button>
+
+            <button
+              onClick={() => {
+                presetImportInputRef.current?.click();
+              }}
+              style={{ ...buttonStyle, padding: 8 }}
+            >
+              IMPORT JSON
+            </button>
+
+            <button
+              onClick={() => {
+                if (selectedPresetName === 'CUSTOM') return;
+                setUserPresets((current) =>
+                  current.filter(
+                    (preset) => preset.name !== selectedPresetName
+                  )
+                );
+                setSelectedPresetName('CUSTOM');
+              }}
+              style={{ ...buttonStyle, padding: 8 }}
+            >
+              DELETE USER
+            </button>
+
+            <button
+              onClick={exportUserPresetPack}
+              style={{ ...buttonStyle, padding: 8 }}
+            >
+              EXPORT PACK
+            </button>
+          </div>
         </div>
 
         <div style={sectionStyle}>
@@ -1710,7 +2091,23 @@ function App() {
             ))}
           </div>
 
+          <div style={sliderLabelStyle}>SIZE PRESET</div>
+
+          <UiSelect
+            value={exportSizePreset}
+            options={(
+              Object.keys(EXPORT_SIZE_PRESETS) as ExportSizePreset[]
+            ).map((preset) => ({
+              value: preset,
+              label: EXPORT_SIZE_PRESETS[preset].label
+            }))}
+            onChange={(value) => {
+              setExportSizePreset(value as ExportSizePreset);
+            }}
+          />
+
           <div style={sliderLabelStyle}>DPI</div>
+
 
           <div
             style={{
@@ -2011,6 +2408,7 @@ function EffectSections({
     return [
       values.useAscii,
       values.useDataOverlay,
+      values.useMachineView,
       values.usePosterText,
       values.useHudFrame
     ].filter(Boolean).length;
@@ -2315,6 +2713,24 @@ function EffectSections({
                 markAsCustom();
                 setters.setArtifactMaskMode(
                   value as ArtifactMaskMode
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>TARGET</div>
+
+            <UiSelect
+              value={values.artifactMaskTarget}
+              options={[
+                { value: 'all-distortion', label: 'ALL DISTORTION' },
+                { value: 'pixel-sort', label: 'PIXEL SORT' },
+                { value: 'glitch', label: 'GLITCH' },
+                { value: 'signal-waves', label: 'SIGNAL WAVES' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setArtifactMaskTarget(
+                  value as ArtifactMaskTarget
                 );
               }}
             />
@@ -3297,6 +3713,23 @@ function EffectSections({
 
         {values.useCodecDamage && (
           <>
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.codecDamageMode}
+              options={[
+                { value: 'blocks', label: 'BLOCKS' },
+                { value: 'compression-bands', label: 'COMPRESSION BANDS' },
+                { value: 'broken-iframe', label: 'BROKEN I-FRAME' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setCodecDamageMode(
+                  value as CodecDamageMode
+                );
+              }}
+            />
+
             <div style={sliderLabelStyle}>BLOCK SIZE</div>
 
             <UiSlider
@@ -3897,6 +4330,8 @@ function EffectSections({
                 { value: 'random-codes', label: 'RANDOM CODES' },
                 { value: 'coordinates', label: 'COORDINATES' },
                 { value: 'image-info', label: 'IMAGE INFO' },
+                { value: 'metadata', label: 'METADATA' },
+                { value: 'diagnostics', label: 'DIAGNOSTICS' },
                 { value: 'warning', label: 'WARNING TEXT' },
                 { value: 'custom', label: 'CUSTOM TEXT' }
               ]}
@@ -3986,6 +4421,100 @@ function EffectSections({
 
       <div style={orderedSectionStyle(53, 'overlay')}>
         <UiCheckbox
+          checked={values.useMachineView}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseMachineView(checked);
+            });
+          }}
+          label="Machine View"
+        />
+
+        {values.useMachineView && (
+          <>
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.machineViewMode}
+              options={[
+                { value: 'tracking', label: 'TRACKING' },
+                { value: 'surveillance', label: 'SURVEILLANCE' },
+                { value: 'classifier', label: 'CLASSIFIER' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setMachineViewMode(
+                  value as MachineViewMode
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>BLOCKS</div>
+
+            <UiSlider
+              min={1}
+              max={12}
+              step={1}
+              value={values.machineViewCount}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setMachineViewCount(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>SENSITIVITY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.machineViewSensitivity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setMachineViewSensitivity(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>OPACITY</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.machineViewOpacity}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setMachineViewOpacity(value);
+              }}
+            />
+
+            <div style={{ marginTop: 12 }}>
+              <UiColorInput
+                label="COLOR"
+                value={values.machineViewColor}
+                onChange={(value) => {
+                  markAsCustom();
+                  setters.setMachineViewColor(value);
+                }}
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <UiCheckbox
+                checked={values.machineViewShowLabels}
+                onChange={(checked) => {
+                  markAsCustom();
+                  setters.setMachineViewShowLabels(checked);
+                }}
+                label="Labels"
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={orderedSectionStyle(54, 'overlay')}>
+        <UiCheckbox
           checked={values.usePosterText}
           onChange={(checked) => {
             runWithoutPanelJump(() => {
@@ -4015,6 +4544,65 @@ function EffectSections({
               }}
               spellCheck={false}
             />
+
+            <div style={sliderLabelStyle}>LAYOUT</div>
+
+            <UiSelect
+              value={values.posterTextLayout}
+              options={[
+                { value: 'single', label: 'SINGLE' },
+                { value: 'title-stack', label: 'TITLE STACK' },
+                { value: 'split-caption', label: 'SPLIT CAPTION' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextLayout(
+                  value as PosterTextLayout
+                );
+              }}
+            />
+
+            {values.posterTextLayout !== 'single' && (
+              <>
+                <div style={sliderLabelStyle}>SUB TEXT</div>
+
+                <input
+                  className="ui-number-input"
+                  value={values.posterTextSubtitle}
+                  onChange={(event) => {
+                    markAsCustom();
+                    setters.setPosterTextSubtitle(
+                      event.target.value
+                    );
+                  }}
+                  style={{
+                    width: '100%',
+                    marginTop: 6,
+                    border: '1px solid #164d34'
+                  }}
+                  spellCheck={false}
+                />
+
+                <div style={sliderLabelStyle}>CAPTION</div>
+
+                <input
+                  className="ui-number-input"
+                  value={values.posterTextCaption}
+                  onChange={(event) => {
+                    markAsCustom();
+                    setters.setPosterTextCaption(
+                      event.target.value
+                    );
+                  }}
+                  style={{
+                    width: '100%',
+                    marginTop: 6,
+                    border: '1px solid #164d34'
+                  }}
+                  spellCheck={false}
+                />
+              </>
+            )}
 
             <div style={sliderLabelStyle}>FONT</div>
 
@@ -4204,7 +4792,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(54, 'overlay')}>
+      <div style={orderedSectionStyle(55, 'overlay')}>
         <UiCheckbox
           checked={values.useHudFrame}
           onChange={(checked) => {
@@ -4225,6 +4813,7 @@ function EffectSections({
                 { value: 'scan-frame', label: 'SCAN FRAME' },
                 { value: 'archive-frame', label: 'ARCHIVE FRAME' },
                 { value: 'targeting-frame', label: 'TARGETING FRAME' },
+                { value: 'panel-labels', label: 'PANEL LABELS' },
                 { value: 'corrupted-ui', label: 'CORRUPTED UI' },
                 { value: 'minimal', label: 'MINIMAL' }
               ]}

@@ -2,6 +2,8 @@ export type DataOverlayMode =
   | 'random-codes'
   | 'coordinates'
   | 'image-info'
+  | 'metadata'
+  | 'diagnostics'
   | 'warning'
   | 'custom';
 
@@ -135,6 +137,38 @@ function createOverlayText({
     ];
 
     return pick(options, random);
+  }
+
+  if (mode === 'metadata') {
+    const tags = [
+      `CAPTURE ${width}x${height}`,
+      `PROFILE DITHER-${randomInt(random, 10, 99)}`,
+      `GAMMA ${randomInt(random, 18, 24) / 10}`,
+      `SCAN UTC ${randomInt(random, 0, 23)
+        .toString()
+        .padStart(2, '0')}:${randomInt(random, 0, 59)
+        .toString()
+        .padStart(2, '0')}`,
+      `SENSOR ${randomInt(random, 100, 999)}-A`,
+      `PACKET ${randomInt(random, 10000, 99999)}`
+    ];
+
+    return pick(tags, random);
+  }
+
+  if (mode === 'diagnostics') {
+    const normalizedX = Math.round((x / width) * 100);
+    const normalizedY = Math.round((y / height) * 100);
+    const tags = [
+      `NODE ${normalizedX}.${normalizedY}`,
+      `VECTOR ${randomSigned(random, 32)}/${randomSigned(random, 32)}`,
+      `LOSS ${randomInt(random, 0, 18)}%`,
+      `EDGE ${randomInt(random, 10, 99)}`,
+      `LUMA ${randomInt(random, 0, 255)}`,
+      `LOCK ${random() > 0.35 ? 'TRUE' : 'FALSE'}`
+    ];
+
+    return pick(tags, random);
   }
 
   if (mode === 'warning') {

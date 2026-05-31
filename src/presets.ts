@@ -1,16 +1,19 @@
 import type { ArtifactMaskMode } from './effects/artifactMask';
 import type { ChannelPacketLossChannel } from './effects/channelPacketLoss';
+import type { CodecDamageMode } from './effects/codecDamage';
 import type { DitherMode } from './effects/dither';
 import type { FrameEchoMode } from './effects/frameEcho';
 import type { PatternDitherShape } from './effects/patternDither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
 import type { LumaDisplacementMode } from './effects/lumaDisplacement';
+import type { MachineViewMode } from './effects/machineView';
 import type { MotionSmearDirection } from './effects/motionSmear';
 import type { SignalWavesMode } from './effects/signalWaves';
 import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
   PosterTextFont,
+  PosterTextLayout,
   PosterTextMode,
   PosterTextPanelAnchor,
 } from './effects/posterText';
@@ -18,6 +21,7 @@ import type {
   RegionalPaletteMode,
   RegionalPaletteZone
 } from './effects/regionalPalette';
+import type { ArtifactMaskTarget } from './effectTypes';
 import type { ScanDriftDirection } from './effects/scanDrift';
 
 export interface EffectPreset {
@@ -62,6 +66,7 @@ export interface EffectPreset {
 
   useArtifactMask: boolean;
   artifactMaskMode: ArtifactMaskMode;
+  artifactMaskTarget: ArtifactMaskTarget;
   artifactMaskThreshold: number;
 
   useGlitch: boolean;
@@ -72,6 +77,7 @@ export interface EffectPreset {
   edgeGlitchOnly: boolean;
 
   useCodecDamage: boolean;
+  codecDamageMode: CodecDamageMode;
   codecDamageBlockSize: number;
   codecDamageAmount: number;
   codecDamageChromaShift: number;
@@ -146,8 +152,19 @@ export interface EffectPreset {
   dataOverlayColor: string;
   dataOverlayCustomText: string;
 
+  useMachineView: boolean;
+  machineViewMode: MachineViewMode;
+  machineViewCount: number;
+  machineViewSensitivity: number;
+  machineViewOpacity: number;
+  machineViewColor: string;
+  machineViewShowLabels: boolean;
+
   usePosterText: boolean;
   posterTextContent: string;
+  posterTextSubtitle: string;
+  posterTextCaption: string;
+  posterTextLayout: PosterTextLayout;
   posterTextX: number;
   posterTextY: number;
   posterTextVertical: boolean;
@@ -237,6 +254,7 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
 
   useArtifactMask: false,
   artifactMaskMode: 'all',
+  artifactMaskTarget: 'all-distortion',
   artifactMaskThreshold: 128,
 
   useGlitch: false,
@@ -247,6 +265,7 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   edgeGlitchOnly: true,
 
   useCodecDamage: false,
+  codecDamageMode: 'blocks',
   codecDamageBlockSize: 18,
   codecDamageAmount: 0.35,
   codecDamageChromaShift: 3,
@@ -321,8 +340,19 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   dataOverlayColor: '#00ff99',
   dataOverlayCustomText: 'SIGNAL UNSTABLE',
 
+  useMachineView: false,
+  machineViewMode: 'tracking',
+  machineViewCount: 4,
+  machineViewSensitivity: 0.35,
+  machineViewOpacity: 0.72,
+  machineViewColor: '#00ff99',
+  machineViewShowLabels: true,
+
   usePosterText: false,
   posterTextContent: 'SIGNAL DECAY',
+  posterTextSubtitle: 'TRANSMISSION ERROR',
+  posterTextCaption: 'ARCHIVE INDEX 00',
+  posterTextLayout: 'single',
   posterTextX: 50,
   posterTextY: 50,
   posterTextVertical: false,

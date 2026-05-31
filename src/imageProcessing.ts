@@ -8,6 +8,7 @@ import { applyDithering } from './effects/dither';
 import { applyFrameEcho } from './effects/frameEcho';
 import { applyHudFrame } from './effects/hudFrame';
 import { applyLumaDisplacement } from './effects/lumaDisplacement';
+import { applyMachineView } from './effects/machineView';
 import { applyNoise } from './effects/noise';
 import { applyPanelLayout } from './effects/panelLayout';
 import { applyPosterText } from './effects/posterText';
@@ -230,7 +231,12 @@ export function processImage({
   }
 
   if (values.usePixelSort) {
-    const beforePixelSort = values.useArtifactMask
+    const beforePixelSort =
+      values.useArtifactMask &&
+      (
+        values.artifactMaskTarget === 'all-distortion' ||
+        values.artifactMaskTarget === 'pixel-sort'
+      )
       ? ctx.getImageData(0, 0, width, height)
       : null;
 
@@ -305,11 +311,18 @@ export function processImage({
   }
 
   const processedCopy = ctx.getImageData(0, 0, width, height);
-  const beforeDistortionCopy = values.useArtifactMask
+  const beforeDistortionCopy =
+    values.useArtifactMask &&
+    values.artifactMaskTarget === 'all-distortion'
     ? ctx.getImageData(0, 0, width, height)
     : null;
 
   if (values.useGlitch && values.glitch > 0) {
+    const beforeGlitchCopy =
+      values.useArtifactMask &&
+      values.artifactMaskTarget === 'glitch'
+        ? ctx.getImageData(0, 0, width, height)
+        : null;
     const glitchRandom = createSeededRandom(activeSeed, 'glitch');
     const target = ctx.getImageData(0, 0, width, height);
 
@@ -399,6 +412,15 @@ export function processImage({
     }
 
     ctx.putImageData(target, 0, 0);
+
+    if (beforeGlitchCopy) {
+      applyArtifactMask(ctx, width, height, {
+        mode: values.artifactMaskMode,
+        threshold: values.artifactMaskThreshold,
+        seed: deriveSeed(activeSeed, 'artifact-mask-glitch'),
+        source: beforeGlitchCopy
+      });
+    }
   }
 
   if (
@@ -406,6 +428,7 @@ export function processImage({
     values.codecDamageAmount > 0
   ) {
     applyCodecDamage(ctx, width, height, {
+      mode: values.codecDamageMode,
       blockSize: values.codecDamageBlockSize,
       amount: values.codecDamageAmount,
       chromaShift: values.codecDamageChromaShift,
@@ -509,6 +532,12 @@ export function processImage({
   }
 
   if (values.useSignalWaves) {
+    const beforeSignalWavesCopy =
+      values.useArtifactMask &&
+      values.artifactMaskTarget === 'signal-waves'
+        ? ctx.getImageData(0, 0, width, height)
+        : null;
+
     applySignalWaves(ctx, width, height, {
       mode: values.signalWavesMode,
       frequency: values.signalWavesFrequency,
@@ -520,6 +549,15 @@ export function processImage({
       replaceImage: values.signalWavesReplaceImage,
       reactToImage: values.signalWavesReactToImage
     });
+
+    if (beforeSignalWavesCopy) {
+      applyArtifactMask(ctx, width, height, {
+        mode: values.artifactMaskMode,
+        threshold: values.artifactMaskThreshold,
+        seed: deriveSeed(activeSeed, 'artifact-mask-signal-waves'),
+        source: beforeSignalWavesCopy
+      });
+    }
   }
 
   if (values.usePanelLayout) {
@@ -579,9 +617,24 @@ export function processImage({
     });
   }
 
+  if (values.useMachineView) {
+    applyMachineView(ctx, width, height, {
+      mode: values.machineViewMode,
+      count: values.machineViewCount,
+      sensitivity: values.machineViewSensitivity,
+      opacity: values.machineViewOpacity,
+      color: values.machineViewColor,
+      showLabels: values.machineViewShowLabels,
+      seed: deriveSeed(activeSeed, 'machine-view')
+    });
+  }
+
   if (values.usePosterText) {
     applyPosterText(ctx, width, height, {
       text: values.posterTextContent,
+      subtitle: values.posterTextSubtitle,
+      caption: values.posterTextCaption,
+      layout: values.posterTextLayout,
       x: values.posterTextX,
       y: values.posterTextY,
       vertical: values.posterTextVertical,

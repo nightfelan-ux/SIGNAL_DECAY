@@ -6,6 +6,10 @@ import {
 } from './panelLayout';
 
 export type PosterTextMode = 'blend' | 'replace';
+export type PosterTextLayout =
+  | 'single'
+  | 'title-stack'
+  | 'split-caption';
 export type PosterTextPanelAnchor =
   | 'free'
   | 'main'
@@ -24,6 +28,9 @@ export type PosterTextFont =
 
 export type PosterTextOptions = {
   text: string;
+  subtitle: string;
+  caption: string;
+  layout: PosterTextLayout;
   x: number;
   y: number;
   vertical: boolean;
@@ -50,6 +57,16 @@ type DrawTextOptions = {
   lineHeight: number;
 };
 
+type PosterTextLayerOptions = PosterTextOptions & {
+  layerText: string;
+  layerX: number;
+  layerY: number;
+  layerSize: number;
+  layerTracking: number;
+  layerOpacity: number;
+  layerVertical: boolean;
+};
+
 const FONT_FAMILIES: Record<PosterTextFont, string> = {
   consolas: 'Consolas, monospace',
   'lucida-console': '"Lucida Console", Monaco, monospace',
@@ -65,33 +82,100 @@ export function applyPosterText(
   options: PosterTextOptions
 ) {
   const text = options.text.trim();
+  const subtitle = options.subtitle.trim();
+  const caption = options.caption.trim();
 
   if (!text) return;
 
-  const size = clamp(options.size, 12, 260);
-  const tracking = clamp(options.tracking, 0, 48);
-  const opacity = clamp(options.opacity, 0, 1);
+  const layout = options.layout;
+  const random = createRandom(options.seed);
+
+  drawPosterTextLayer(ctx, width, height, options, {
+    ...options,
+    layerText: text,
+    layerX: options.x,
+    layerY:
+      layout === 'title-stack'
+        ? clamp(options.y - 8, 0, 100)
+        : options.y,
+    layerSize: options.size,
+    layerTracking: options.tracking,
+    layerOpacity: options.opacity,
+    layerVertical: options.vertical
+  }, random);
+
+  if (layout === 'single') return;
+
+  if (subtitle) {
+    drawPosterTextLayer(ctx, width, height, options, {
+      ...options,
+      layerText: subtitle,
+      layerX:
+        layout === 'split-caption'
+          ? 16
+          : options.x,
+      layerY:
+        layout === 'split-caption'
+          ? 16
+          : clamp(options.y + 9, 0, 100),
+      layerSize: Math.max(12, options.size * 0.32),
+      layerTracking: Math.min(48, options.tracking + 2),
+      layerOpacity: options.opacity * 0.82,
+      layerVertical: false
+    }, random);
+  }
+
+  if (caption) {
+    drawPosterTextLayer(ctx, width, height, options, {
+      ...options,
+      layerText: caption,
+      layerX:
+        layout === 'split-caption'
+          ? 82
+          : options.x,
+      layerY:
+        layout === 'split-caption'
+          ? 84
+          : clamp(options.y + 17, 0, 100),
+      layerSize: Math.max(10, options.size * 0.18),
+      layerTracking: Math.min(48, options.tracking + 4),
+      layerOpacity: options.opacity * 0.68,
+      layerVertical: false
+    }, random);
+  }
+}
+
+function drawPosterTextLayer(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  baseOptions: PosterTextOptions,
+  options: PosterTextLayerOptions,
+  random: () => number
+) {
+  const text = options.layerText.trim();
+  const size = clamp(options.layerSize, 10, 260);
+  const tracking = clamp(options.layerTracking, 0, 48);
+  const opacity = clamp(options.layerOpacity, 0, 1);
   const textArea = getTextArea(width, height, options);
   const x =
-    textArea.x + (clamp(options.x, 0, 100) / 100) * textArea.width;
+    textArea.x + (clamp(options.layerX, 0, 100) / 100) * textArea.width;
   const y =
-    textArea.y + (clamp(options.y, 0, 100) / 100) * textArea.height;
+    textArea.y + (clamp(options.layerY, 0, 100) / 100) * textArea.height;
   const weight = clamp(options.weight, 100, 900);
 
   if (opacity <= 0) return;
 
-  const random = createRandom(options.seed);
-
   ctx.save();
 
   ctx.translate(x, y);
-  ctx.rotate(options.vertical ? -Math.PI / 2 : 0);
+  ctx.rotate(options.layerVertical ? -Math.PI / 2 : 0);
 
   ctx.font = `${weight} ${size}px ${FONT_FAMILIES[options.font]}`;
   ctx.textBaseline = 'middle';
   ctx.globalAlpha = opacity;
   ctx.globalCompositeOperation =
-    options.mode === 'blend' ? 'screen' : 'source-over';
+    baseOptions.mode === 'blend' ? 'screen' : 'source-over';
 
   const lineHeight = size * 1.04;
   const drawOptions = {
@@ -102,7 +186,7 @@ export function applyPosterText(
     lineHeight
   };
 
-  if (options.mode === 'replace') {
+  if (baseOptions.mode === 'replace') {
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = '#050505';
     ctx.globalAlpha = Math.min(0.65, opacity * 0.85);
@@ -125,7 +209,7 @@ export function applyPosterText(
 
   ctx.globalAlpha = opacity;
   ctx.globalCompositeOperation =
-    options.mode === 'blend' ? 'screen' : 'source-over';
+    baseOptions.mode === 'blend' ? 'screen' : 'source-over';
   ctx.fillStyle = options.color;
 
   drawTrackedText(ctx, drawOptions);

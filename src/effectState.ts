@@ -136,6 +136,7 @@ export function restoreEffectsSnapshot(
 
   setters.setUseArtifactMask(snapshot.useArtifactMask);
   setters.setArtifactMaskMode(snapshot.artifactMaskMode);
+  setters.setArtifactMaskTarget(snapshot.artifactMaskTarget);
   setters.setArtifactMaskThreshold(
     snapshot.artifactMaskThreshold
   );
@@ -148,6 +149,7 @@ export function restoreEffectsSnapshot(
   setters.setEdgeGlitchOnly(snapshot.edgeGlitchOnly);
 
   setters.setUseCodecDamage(snapshot.useCodecDamage);
+  setters.setCodecDamageMode(snapshot.codecDamageMode);
   setters.setCodecDamageBlockSize(snapshot.codecDamageBlockSize);
   setters.setCodecDamageAmount(snapshot.codecDamageAmount);
   setters.setCodecDamageChromaShift(
@@ -235,8 +237,19 @@ export function restoreEffectsSnapshot(
   setters.setDataOverlayColor(snapshot.dataOverlayColor);
   setters.setDataOverlayCustomText(snapshot.dataOverlayCustomText);
 
+  setters.setUseMachineView(snapshot.useMachineView);
+  setters.setMachineViewMode(snapshot.machineViewMode);
+  setters.setMachineViewCount(snapshot.machineViewCount);
+  setters.setMachineViewSensitivity(snapshot.machineViewSensitivity);
+  setters.setMachineViewOpacity(snapshot.machineViewOpacity);
+  setters.setMachineViewColor(snapshot.machineViewColor);
+  setters.setMachineViewShowLabels(snapshot.machineViewShowLabels);
+
   setters.setUsePosterText(snapshot.usePosterText);
   setters.setPosterTextContent(snapshot.posterTextContent);
+  setters.setPosterTextSubtitle(snapshot.posterTextSubtitle);
+  setters.setPosterTextCaption(snapshot.posterTextCaption);
+  setters.setPosterTextLayout(snapshot.posterTextLayout);
   setters.setPosterTextX(snapshot.posterTextX);
   setters.setPosterTextY(snapshot.posterTextY);
   setters.setPosterTextVertical(snapshot.posterTextVertical);
@@ -358,6 +371,7 @@ export function clearEffectSettings(setters: EffectStateSetters) {
 
   setters.setUseArtifactMask(false);
   setters.setArtifactMaskMode('all');
+  setters.setArtifactMaskTarget('all-distortion');
   setters.setArtifactMaskThreshold(128);
 
   setters.setUseGlitch(false);
@@ -368,6 +382,7 @@ export function clearEffectSettings(setters: EffectStateSetters) {
   setters.setEdgeGlitchOnly(true);
 
   setters.setUseCodecDamage(false);
+  setters.setCodecDamageMode('blocks');
   setters.setCodecDamageBlockSize(18);
   setters.setCodecDamageAmount(0.35);
   setters.setCodecDamageChromaShift(3);
@@ -431,8 +446,19 @@ export function clearEffectSettings(setters: EffectStateSetters) {
   setters.setDataOverlayColor('#00ff99');
   setters.setDataOverlayCustomText('SIGNAL UNSTABLE');
 
+  setters.setUseMachineView(false);
+  setters.setMachineViewMode('tracking');
+  setters.setMachineViewCount(4);
+  setters.setMachineViewSensitivity(0.35);
+  setters.setMachineViewOpacity(0.72);
+  setters.setMachineViewColor('#00ff99');
+  setters.setMachineViewShowLabels(true);
+
   setters.setUsePosterText(false);
   setters.setPosterTextContent('SIGNAL DECAY');
+  setters.setPosterTextSubtitle('TRANSMISSION ERROR');
+  setters.setPosterTextCaption('ARCHIVE INDEX 00');
+  setters.setPosterTextLayout('single');
   setters.setPosterTextX(50);
   setters.setPosterTextY(50);
   setters.setPosterTextVertical(false);
@@ -555,6 +581,7 @@ export function applyEffectPreset(
 
   setters.setUseArtifactMask(preset.useArtifactMask);
   setters.setArtifactMaskMode(preset.artifactMaskMode);
+  setters.setArtifactMaskTarget(preset.artifactMaskTarget);
   setters.setArtifactMaskThreshold(
     preset.artifactMaskThreshold
   );
@@ -567,6 +594,7 @@ export function applyEffectPreset(
   setters.setEdgeGlitchOnly(preset.edgeGlitchOnly);
 
   setters.setUseCodecDamage(preset.useCodecDamage);
+  setters.setCodecDamageMode(preset.codecDamageMode);
   setters.setCodecDamageBlockSize(preset.codecDamageBlockSize);
   setters.setCodecDamageAmount(preset.codecDamageAmount);
   setters.setCodecDamageChromaShift(
@@ -671,8 +699,19 @@ export function applyEffectPreset(
   setters.setDataOverlayColor(preset.dataOverlayColor);
   setters.setDataOverlayCustomText(preset.dataOverlayCustomText);
 
+  setters.setUseMachineView(preset.useMachineView);
+  setters.setMachineViewMode(preset.machineViewMode);
+  setters.setMachineViewCount(preset.machineViewCount);
+  setters.setMachineViewSensitivity(preset.machineViewSensitivity);
+  setters.setMachineViewOpacity(preset.machineViewOpacity);
+  setters.setMachineViewColor(preset.machineViewColor);
+  setters.setMachineViewShowLabels(preset.machineViewShowLabels);
+
   setters.setUsePosterText(preset.usePosterText);
   setters.setPosterTextContent(preset.posterTextContent);
+  setters.setPosterTextSubtitle(preset.posterTextSubtitle);
+  setters.setPosterTextCaption(preset.posterTextCaption);
+  setters.setPosterTextLayout(preset.posterTextLayout);
   setters.setPosterTextX(preset.posterTextX);
   setters.setPosterTextY(preset.posterTextY);
   setters.setPosterTextVertical(preset.posterTextVertical);
