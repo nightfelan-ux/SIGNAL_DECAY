@@ -12,6 +12,7 @@ import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
   PosterTextFont,
   PosterTextMode,
+  PosterTextPanelAnchor,
 } from './effects/posterText';
 import type {
   RegionalPaletteMode,
@@ -158,6 +159,7 @@ export interface EffectPreset {
   posterTextColor: string;
   posterTextGlitch: boolean;
   posterTextMode: PosterTextMode;
+  posterTextPanelAnchor: PosterTextPanelAnchor;
 
   useHudFrame: boolean;
   hudFrameStyle: HudFrameStyle;
@@ -332,6 +334,7 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   posterTextColor: '#00ff99',
   posterTextGlitch: false,
   posterTextMode: 'blend',
+  posterTextPanelAnchor: 'free',
 
   useHudFrame: false,
   hudFrameStyle: 'scan-frame',
@@ -986,7 +989,7 @@ export const PRESETS: EffectPreset[] = [
     threshold: 135,
 
     useSignalWaves: true,
-    signalWavesMode: 'radar',
+    signalWavesMode: 'field-lines',
     signalWavesFrequency: 10,
     signalWavesAmplitude: 28,
     signalWavesDensity: 22,
@@ -1074,7 +1077,7 @@ export const PRESETS: EffectPreset[] = [
     threshold: 145,
 
     useSignalWaves: true,
-    signalWavesMode: 'topographic',
+    signalWavesMode: 'depth-scan',
     signalWavesFrequency: 18,
     signalWavesAmplitude: 38,
     signalWavesDensity: 14,
@@ -1128,7 +1131,7 @@ export const PRESETS: EffectPreset[] = [
     asciiColor: '#6ad8ff',
 
     useSignalWaves: true,
-    signalWavesMode: 'topographic',
+    signalWavesMode: 'field-lines',
     signalWavesFrequency: 12,
     signalWavesAmplitude: 24,
     signalWavesDensity: 18,
@@ -1186,7 +1189,7 @@ export const PRESETS: EffectPreset[] = [
     dataOverlayColor: '#ff003c',
 
     useSignalWaves: true,
-    signalWavesMode: 'radar',
+    signalWavesMode: 'contour-pulse',
     signalWavesFrequency: 16,
     signalWavesAmplitude: 35,
     signalWavesDensity: 20,
@@ -1357,7 +1360,7 @@ export const PRESETS: EffectPreset[] = [
     threshold: 145,
 
     useSignalWaves: true,
-    signalWavesMode: 'topographic',
+    signalWavesMode: 'depth-scan',
     signalWavesFrequency: 14,
     signalWavesAmplitude: 44,
     signalWavesDensity: 16,
@@ -1429,7 +1432,7 @@ export const PRESETS: EffectPreset[] = [
     dataOverlayColor: '#00f5ff',
 
     useSignalWaves: true,
-    signalWavesMode: 'radar',
+    signalWavesMode: 'field-lines',
     signalWavesFrequency: 18,
     signalWavesAmplitude: 26,
     signalWavesDensity: 24,
@@ -1469,7 +1472,7 @@ export const PRESETS: EffectPreset[] = [
     patternDitherColor: '#e4ff7a',
 
     useSignalWaves: true,
-    signalWavesMode: 'topographic',
+    signalWavesMode: 'contour-pulse',
     signalWavesFrequency: 22,
     signalWavesAmplitude: 55,
     signalWavesDensity: 12,
@@ -1669,7 +1672,7 @@ export const PRESETS: EffectPreset[] = [
     steps: 5,
 
     useSignalWaves: true,
-    signalWavesMode: 'topographic',
+    signalWavesMode: 'field-lines',
     signalWavesFrequency: 12,
     signalWavesAmplitude: 38,
     signalWavesDensity: 16,
@@ -1809,6 +1812,7 @@ export const PRESETS: EffectPreset[] = [
     posterTextColor: '#00ff99',
     posterTextGlitch: true,
     posterTextMode: 'blend',
+    posterTextPanelAnchor: 'center',
 
     useDataOverlay: true,
     dataOverlayMode: 'random-codes',
@@ -1957,6 +1961,7 @@ export const PRESETS: EffectPreset[] = [
     posterTextColor: '#ff00cc',
     posterTextGlitch: true,
     posterTextMode: 'blend',
+    posterTextPanelAnchor: 'bottom',
 
     useChromatic: true,
     chromaticOffset: 8,
@@ -1977,7 +1982,7 @@ export const PRESETS: EffectPreset[] = [
     panelLayoutCropIntensity: 74,
 
     useSignalWaves: true,
-    signalWavesMode: 'radar',
+    signalWavesMode: 'field-lines',
     signalWavesFrequency: 18,
     signalWavesAmplitude: 32,
     signalWavesDensity: 16,
@@ -2003,6 +2008,7 @@ export const PRESETS: EffectPreset[] = [
     posterTextOpacity: 0.56,
     posterTextColor: '#d6ff00',
     posterTextGlitch: false,
+    posterTextPanelAnchor: 'top',
 
     useHudFrame: true,
     hudFrameStyle: 'targeting-frame',
@@ -2050,6 +2056,7 @@ export const PRESETS: EffectPreset[] = [
     posterTextOpacity: 0.72,
     posterTextColor: '#00c8ff',
     posterTextGlitch: true,
+    posterTextPanelAnchor: 'left',
 
     useDataOverlay: true,
     dataOverlayMode: 'coordinates',
@@ -2192,7 +2199,7 @@ export const PRESETS: EffectPreset[] = [
     panelLayoutMirrorAlternate: false,
 
     useSignalWaves: true,
-    signalWavesMode: 'topographic',
+    signalWavesMode: 'contour-pulse',
     signalWavesFrequency: 16,
     signalWavesAmplitude: 24,
     signalWavesDensity: 20,
@@ -2223,5 +2230,145 @@ export const PRESETS: EffectPreset[] = [
     hudFrameStyle: 'archive-frame',
     hudFrameOpacity: 0.64,
     hudFrameColor: '#00ff99'
+  }),
+
+  createPreset('CONTOUR TITLE SLAB', {
+    usePanelLayout: true,
+    panelLayoutMode: 'center-diagnostics',
+    panelLayoutGap: 8,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#00c8ff',
+    panelLayoutBackgroundColor: '#020407',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 58,
+
+    usePalette: true,
+    colorStart: '#020407',
+    colorEnd: '#00c8ff',
+    steps: 6,
+
+    useSignalWaves: true,
+    signalWavesMode: 'contour',
+    signalWavesFrequency: 20,
+    signalWavesAmplitude: 46,
+    signalWavesDensity: 12,
+    signalWavesOpacity: 0.62,
+    signalWavesColor: '#00c8ff',
+    signalWavesReactToImage: true,
+
+    usePosterText: true,
+    posterTextContent: 'CONTOUR',
+    posterTextX: 50,
+    posterTextY: 88,
+    posterTextFont: 'bahnschrift',
+    posterTextWeight: 800,
+    posterTextSize: 72,
+    posterTextTracking: 8,
+    posterTextOpacity: 0.72,
+    posterTextColor: '#00c8ff',
+    posterTextGlitch: true,
+    posterTextMode: 'blend',
+    posterTextPanelAnchor: 'center',
+
+    useHudFrame: true,
+    hudFrameStyle: 'targeting-frame',
+    hudFrameOpacity: 0.46,
+    hudFrameColor: '#00c8ff'
+  }),
+
+  createPreset('FIELD REPORT', {
+    usePanelLayout: true,
+    panelLayoutMode: 'side-panel',
+    panelLayoutGap: 9,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#d6ff00',
+    panelLayoutBackgroundColor: '#050605',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 70,
+    panelLayoutMirrorAlternate: true,
+
+    useSignalWaves: true,
+    signalWavesMode: 'field-lines',
+    signalWavesFrequency: 24,
+    signalWavesAmplitude: 34,
+    signalWavesDensity: 15,
+    signalWavesOpacity: 0.56,
+    signalWavesColor: '#d6ff00',
+    signalWavesReactToImage: true,
+
+    usePatternDither: true,
+    patternDitherShape: 'line',
+    patternDitherScale: 16,
+    patternDitherDensity: 58,
+    patternDitherOpacity: 0.34,
+    patternDitherColor: '#d6ff00',
+
+    usePosterText: true,
+    posterTextContent: 'FIELD\nREPORT',
+    posterTextX: 50,
+    posterTextY: 50,
+    posterTextVertical: true,
+    posterTextFont: 'lucida-console',
+    posterTextWeight: 700,
+    posterTextSize: 42,
+    posterTextTracking: 6,
+    posterTextOpacity: 0.78,
+    posterTextColor: '#d6ff00',
+    posterTextGlitch: false,
+    posterTextMode: 'blend',
+    posterTextPanelAnchor: 'right',
+
+    useDataOverlay: true,
+    dataOverlayMode: 'coordinates',
+    dataOverlayDensity: 16,
+    dataOverlayFontSize: 9,
+    dataOverlayOpacity: 0.28,
+    dataOverlayColor: '#d6ff00'
+  }),
+
+  createPreset('DEPTHSCAN POSTER', {
+    usePanelLayout: true,
+    panelLayoutMode: 'split-scan',
+    panelLayoutGap: 10,
+    panelLayoutBorderWidth: 1,
+    panelLayoutBorderColor: '#00ff99',
+    panelLayoutBackgroundColor: '#020805',
+    panelLayoutPanelOpacity: 1,
+    panelLayoutRandomCrop: true,
+    panelLayoutCropIntensity: 62,
+
+    useSignalWaves: true,
+    signalWavesMode: 'depth-scan',
+    signalWavesFrequency: 18,
+    signalWavesAmplitude: 44,
+    signalWavesDensity: 14,
+    signalWavesOpacity: 0.6,
+    signalWavesColor: '#00ff99',
+    signalWavesReactToImage: true,
+
+    useLumaDisplacement: true,
+    lumaDisplacementMode: 'split',
+    lumaDisplacementAmount: 22,
+    lumaDisplacementThreshold: 112,
+    lumaDisplacementJitter: 6,
+
+    usePosterText: true,
+    posterTextContent: 'DEPTHSCAN',
+    posterTextX: 50,
+    posterTextY: 18,
+    posterTextFont: 'consolas',
+    posterTextWeight: 700,
+    posterTextSize: 52,
+    posterTextTracking: 10,
+    posterTextOpacity: 0.7,
+    posterTextColor: '#00ff99',
+    posterTextGlitch: true,
+    posterTextMode: 'blend',
+    posterTextPanelAnchor: 'top',
+
+    useScanlines: true,
+    scanlineIntensity: 0.18
   })
 ];

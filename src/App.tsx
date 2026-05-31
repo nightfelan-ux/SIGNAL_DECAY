@@ -36,6 +36,7 @@ import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
   PosterTextFont,
   PosterTextMode,
+  PosterTextPanelAnchor,
 } from './effects/posterText';
 import type { PatternDitherShape } from './effects/patternDither';
 import type {
@@ -374,6 +375,10 @@ function App() {
     useState(false);
   const [posterTextMode, setPosterTextMode] =
     useState<PosterTextMode>('blend');
+  const [
+    posterTextPanelAnchor,
+    setPosterTextPanelAnchor
+  ] = useState<PosterTextPanelAnchor>('free');
 
   const [useHudFrame, setUseHudFrame] = useState(false);
   const [hudFrameStyle, setHudFrameStyle] =
@@ -687,6 +692,7 @@ function App() {
       posterTextColor,
       posterTextGlitch,
       posterTextMode,
+      posterTextPanelAnchor,
 
       useHudFrame,
       hudFrameStyle,
@@ -831,6 +837,7 @@ function App() {
       posterTextColor,
       posterTextGlitch,
       posterTextMode,
+      posterTextPanelAnchor,
       useHudFrame,
       hudFrameStyle,
       hudFrameOpacity,
@@ -1003,6 +1010,7 @@ function App() {
       setPosterTextColor,
       setPosterTextGlitch,
       setPosterTextMode,
+      setPosterTextPanelAnchor,
 
       setUseHudFrame,
       setHudFrameStyle,
@@ -2884,8 +2892,20 @@ function EffectSections({
                   label: 'TOPOGRAPHIC'
                 },
                 {
-                  value: 'radar',
-                  label: 'RADAR RIPPLES'
+                  value: 'contour',
+                  label: 'OBJECT CONTOUR'
+                },
+                {
+                  value: 'contour-pulse',
+                  label: 'CONTOUR PULSE'
+                },
+                {
+                  value: 'depth-scan',
+                  label: 'DEPTH SCAN'
+                },
+                {
+                  value: 'field-lines',
+                  label: 'FIELD LINES'
                 }
               ]}
               onChange={(value) => {
@@ -4056,6 +4076,27 @@ function EffectSections({
                 label="Vertical"
               />
             </div>
+
+            <div style={sliderLabelStyle}>PANEL ANCHOR</div>
+
+            <UiSelect
+              value={values.posterTextPanelAnchor}
+              options={[
+                { value: 'free', label: 'FREE CANVAS' },
+                { value: 'main', label: 'MAIN PANEL' },
+                { value: 'center', label: 'CENTER PANEL' },
+                { value: 'left', label: 'LEFT PANEL' },
+                { value: 'right', label: 'RIGHT PANEL' },
+                { value: 'top', label: 'TOP PANEL' },
+                { value: 'bottom', label: 'BOTTOM PANEL' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setPosterTextPanelAnchor(
+                  value as PosterTextPanelAnchor
+                );
+              }}
+            />
 
             <div style={sliderLabelStyle}>X POSITION</div>
 

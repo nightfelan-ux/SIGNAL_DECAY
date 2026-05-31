@@ -15,6 +15,7 @@ import type { PanelLayoutMode } from './effects/panelLayout';
 import type {
   PosterTextFont,
   PosterTextMode,
+  PosterTextPanelAnchor,
 } from './effects/posterText';
 import type { PatternDitherShape } from './effects/patternDither';
 import type {
@@ -186,6 +187,7 @@ export type EffectValues = {
   posterTextColor: string;
   posterTextGlitch: boolean;
   posterTextMode: PosterTextMode;
+  posterTextPanelAnchor: PosterTextPanelAnchor;
 
   useHudFrame: boolean;
   hudFrameStyle: HudFrameStyle;
@@ -360,6 +362,7 @@ export type EffectSetters = {
   setPosterTextColor: Setter<string>;
   setPosterTextGlitch: Setter<boolean>;
   setPosterTextMode: Setter<PosterTextMode>;
+  setPosterTextPanelAnchor: Setter<PosterTextPanelAnchor>;
 
   setUseHudFrame: Setter<boolean>;
   setHudFrameStyle: Setter<HudFrameStyle>;

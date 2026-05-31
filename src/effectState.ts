@@ -248,6 +248,9 @@ export function restoreEffectsSnapshot(
   setters.setPosterTextColor(snapshot.posterTextColor);
   setters.setPosterTextGlitch(snapshot.posterTextGlitch);
   setters.setPosterTextMode(snapshot.posterTextMode);
+  setters.setPosterTextPanelAnchor(
+    snapshot.posterTextPanelAnchor
+  );
 
   setters.setUseHudFrame(snapshot.useHudFrame);
   setters.setHudFrameStyle(snapshot.hudFrameStyle);
@@ -441,6 +444,7 @@ export function clearEffectSettings(setters: EffectStateSetters) {
   setters.setPosterTextColor('#00ff99');
   setters.setPosterTextGlitch(false);
   setters.setPosterTextMode('blend');
+  setters.setPosterTextPanelAnchor('free');
 
   setters.setUseHudFrame(false);
   setters.setHudFrameStyle('scan-frame');
@@ -680,6 +684,7 @@ export function applyEffectPreset(
   setters.setPosterTextColor(preset.posterTextColor);
   setters.setPosterTextGlitch(preset.posterTextGlitch);
   setters.setPosterTextMode(preset.posterTextMode);
+  setters.setPosterTextPanelAnchor(preset.posterTextPanelAnchor);
 
   setters.setUseHudFrame(preset.useHudFrame);
   setters.setHudFrameStyle(preset.hudFrameStyle);

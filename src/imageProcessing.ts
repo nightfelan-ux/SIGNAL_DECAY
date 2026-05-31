@@ -593,6 +593,10 @@ export function processImage({
       color: values.posterTextColor,
       glitch: values.posterTextGlitch,
       mode: values.posterTextMode,
+      panelAnchor: values.posterTextPanelAnchor,
+      panelLayoutEnabled: values.usePanelLayout,
+      panelLayoutMode: values.panelLayoutMode,
+      panelLayoutGap: values.panelLayoutGap,
       seed: deriveSeed(activeSeed, 'poster-text')
     });
   }

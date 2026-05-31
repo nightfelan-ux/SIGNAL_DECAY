@@ -1,6 +1,19 @@
 import { createRandom } from '../utils/random';
+import {
+  createPanels,
+  type PanelLayoutMode,
+  type Rect
+} from './panelLayout';
 
 export type PosterTextMode = 'blend' | 'replace';
+export type PosterTextPanelAnchor =
+  | 'free'
+  | 'main'
+  | 'center'
+  | 'left'
+  | 'right'
+  | 'top'
+  | 'bottom';
 
 export type PosterTextFont =
   | 'consolas'
@@ -22,6 +35,10 @@ export type PosterTextOptions = {
   color: string;
   glitch: boolean;
   mode: PosterTextMode;
+  panelAnchor: PosterTextPanelAnchor;
+  panelLayoutEnabled: boolean;
+  panelLayoutMode: PanelLayoutMode;
+  panelLayoutGap: number;
   seed: number;
 };
 
@@ -54,8 +71,11 @@ export function applyPosterText(
   const size = clamp(options.size, 12, 260);
   const tracking = clamp(options.tracking, 0, 48);
   const opacity = clamp(options.opacity, 0, 1);
-  const x = (clamp(options.x, 0, 100) / 100) * width;
-  const y = (clamp(options.y, 0, 100) / 100) * height;
+  const textArea = getTextArea(width, height, options);
+  const x =
+    textArea.x + (clamp(options.x, 0, 100) / 100) * textArea.width;
+  const y =
+    textArea.y + (clamp(options.y, 0, 100) / 100) * textArea.height;
   const weight = clamp(options.weight, 100, 900);
 
   if (opacity <= 0) return;
@@ -112,6 +132,78 @@ export function applyPosterText(
 
   ctx.restore();
 }
+
+function getTextArea(
+  width: number,
+  height: number,
+  options: PosterTextOptions
+): Rect {
+  const canvasRect = {
+    x: 0,
+    y: 0,
+    width,
+    height
+  };
+
+  if (
+    options.panelAnchor === 'free' ||
+    !options.panelLayoutEnabled
+  ) {
+    return canvasRect;
+  }
+
+  const panels = createPanels(
+    options.panelLayoutMode,
+    width,
+    height,
+    clamp(options.panelLayoutGap, 0, 80)
+  );
+
+  if (panels.length === 0) return canvasRect;
+
+  if (options.panelAnchor === 'main') {
+    return [...panels].sort(
+      (a, b) => b.width * b.height - a.width * a.height
+    )[0];
+  }
+
+  if (options.panelAnchor === 'center') {
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    return [...panels].sort((a, b) => {
+      const aDistance = getRectCenterDistance(a, centerX, centerY);
+      const bDistance = getRectCenterDistance(b, centerX, centerY);
+
+      return aDistance - bDistance;
+    })[0];
+  }
+
+  return [...panels].sort((a, b) => {
+    const aCenterX = a.x + a.width / 2;
+    const bCenterX = b.x + b.width / 2;
+    const aCenterY = a.y + a.height / 2;
+    const bCenterY = b.y + b.height / 2;
+
+    if (options.panelAnchor === 'left') return aCenterX - bCenterX;
+    if (options.panelAnchor === 'right') return bCenterX - aCenterX;
+    if (options.panelAnchor === 'top') return aCenterY - bCenterY;
+
+    return bCenterY - aCenterY;
+  })[0];
+}
+
+function getRectCenterDistance(
+  rect: Rect,
+  x: number,
+  y: number
+) {
+  const dx = rect.x + rect.width / 2 - x;
+  const dy = rect.y + rect.height / 2 - y;
+
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 function drawGlitchText(
   ctx: CanvasRenderingContext2D,
   options: DrawTextOptions,

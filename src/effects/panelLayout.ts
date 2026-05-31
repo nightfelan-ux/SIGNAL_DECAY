@@ -25,7 +25,7 @@ export type PanelLayoutOptions = {
   seed?: number;
 };
 
-type Rect = {
+export type Rect = {
   x: number;
   y: number;
   width: number;
@@ -145,7 +145,7 @@ export function applyPanelLayout(
   ctx.restore();
 }
 
-function createPanels(
+export function createPanels(
   mode: PanelLayoutMode,
   width: number,
   height: number,
