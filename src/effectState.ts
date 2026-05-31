@@ -134,6 +134,12 @@ export function restoreEffectsSnapshot(
   setters.setDitherMode(snapshot.ditherMode);
   setters.setThreshold(snapshot.threshold);
 
+  setters.setUseArtifactMask(snapshot.useArtifactMask);
+  setters.setArtifactMaskMode(snapshot.artifactMaskMode);
+  setters.setArtifactMaskThreshold(
+    snapshot.artifactMaskThreshold
+  );
+
   setters.setUseGlitch(snapshot.useGlitch);
   setters.setGlitch(snapshot.glitch);
   setters.setGlitchChaos(snapshot.glitchChaos);
@@ -306,6 +312,10 @@ export function clearEffectSettings(setters: EffectStateSetters) {
   setters.setDitherMode('floyd-steinberg');
   setters.setThreshold(255);
 
+  setters.setUseArtifactMask(false);
+  setters.setArtifactMaskMode('all');
+  setters.setArtifactMaskThreshold(128);
+
   setters.setUseGlitch(false);
   setters.setGlitch(0);
   setters.setGlitchChaos(0);
@@ -472,6 +482,12 @@ export function applyEffectPreset(
   setters.setUseDither(preset.useDither);
   setters.setDitherMode(preset.ditherMode);
   setters.setThreshold(preset.threshold);
+
+  setters.setUseArtifactMask(preset.useArtifactMask);
+  setters.setArtifactMaskMode(preset.artifactMaskMode);
+  setters.setArtifactMaskThreshold(
+    preset.artifactMaskThreshold
+  );
 
   setters.setUseGlitch(preset.useGlitch);
   setters.setGlitch(preset.glitch);

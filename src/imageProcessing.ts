@@ -1,4 +1,5 @@
 import { applyAscii } from './effects/ascii';
+import { applyArtifactMask } from './effects/artifactMask';
 import { applyChromatic } from './effects/chromatic';
 import { applyCodecDamage } from './effects/codecDamage';
 import { applyDataOverlay } from './effects/dataOverlay';
@@ -225,12 +226,25 @@ export function processImage({
   }
 
   if (values.usePixelSort) {
+    const beforePixelSort = values.useArtifactMask
+      ? ctx.getImageData(0, 0, width, height)
+      : null;
+
     applyPixelSort(ctx, width, height, {
       direction: values.pixelSortDirection,
       mode: values.pixelSortMode,
       threshold: values.pixelSortThreshold,
       amount: values.pixelSortAmount
     });
+
+    if (beforePixelSort) {
+      applyArtifactMask(ctx, width, height, {
+        mode: values.artifactMaskMode,
+        threshold: values.artifactMaskThreshold,
+        seed: deriveSeed(activeSeed, 'artifact-mask-pixel-sort'),
+        source: beforePixelSort
+      });
+    }
   }
 
   const prePaletteCopy = ctx.getImageData(0, 0, width, height);
@@ -287,6 +301,9 @@ export function processImage({
   }
 
   const processedCopy = ctx.getImageData(0, 0, width, height);
+  const beforeDistortionCopy = values.useArtifactMask
+    ? ctx.getImageData(0, 0, width, height)
+    : null;
 
   if (values.useGlitch && values.glitch > 0) {
     const glitchRandom = createSeededRandom(activeSeed, 'glitch');
@@ -482,6 +499,15 @@ export function processImage({
       height,
       values.scanlineIntensity
     );
+  }
+
+  if (beforeDistortionCopy) {
+    applyArtifactMask(ctx, width, height, {
+      mode: values.artifactMaskMode,
+      threshold: values.artifactMaskThreshold,
+      seed: deriveSeed(activeSeed, 'artifact-mask-distortion'),
+      source: beforeDistortionCopy
+    });
   }
 
   if (values.useDataOverlay) {

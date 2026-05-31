@@ -26,6 +26,7 @@ import type {
 } from './effectTypes';
 import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
+import type { ArtifactMaskMode } from './effects/artifactMask';
 import type { HudFrameStyle } from './effects/hudFrame';
 import type { MotionSmearDirection } from './effects/motionSmear';
 import type { PanelLayoutMode } from './effects/panelLayout';
@@ -188,6 +189,15 @@ function App() {
   const [ditherMode, setDitherMode] =
     useState<DitherMode>('floyd-steinberg');
   const [threshold, setThreshold] = useState(255);
+
+  const [useArtifactMask, setUseArtifactMask] =
+    useState(false);
+  const [artifactMaskMode, setArtifactMaskMode] =
+    useState<ArtifactMaskMode>('all');
+  const [
+    artifactMaskThreshold,
+    setArtifactMaskThreshold
+  ] = useState(128);
 
   const [useGlitch, setUseGlitch] = useState(false);
   const [glitch, setGlitch] = useState(0);
@@ -494,6 +504,10 @@ function App() {
       ditherMode,
       threshold,
 
+      useArtifactMask,
+      artifactMaskMode,
+      artifactMaskThreshold,
+
       useGlitch,
       glitch,
       glitchChaos,
@@ -625,6 +639,9 @@ function App() {
       useDither,
       ditherMode,
       threshold,
+      useArtifactMask,
+      artifactMaskMode,
+      artifactMaskThreshold,
       useGlitch,
       glitch,
       glitchChaos,
@@ -756,6 +773,10 @@ function App() {
       setUseDither,
       setDitherMode,
       setThreshold,
+
+      setUseArtifactMask,
+      setArtifactMaskMode,
+      setArtifactMaskThreshold,
 
       setUseGlitch,
       setGlitch,
@@ -1821,6 +1842,7 @@ function EffectSections({
 
     if (group === 'distortion') {
       return [
+        values.useArtifactMask,
         values.usePixelSort,
         values.useGlitch,
         values.useCodecDamage,
@@ -2109,6 +2131,56 @@ function EffectSections({
               onChange={(value) => {
                 markAsCustom();
                 setters.setPsxChromaBleed(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={orderedSectionStyle(30, 'distortion')}>
+        <UiCheckbox
+          checked={values.useArtifactMask}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseArtifactMask(checked);
+            });
+          }}
+          label="Artifact Mask"
+        />
+
+        {values.useArtifactMask && (
+          <>
+            <div style={sliderLabelStyle}>MODE</div>
+
+            <UiSelect
+              value={values.artifactMaskMode}
+              options={[
+                { value: 'all', label: 'ALL AREAS' },
+                { value: 'bright', label: 'BRIGHT AREAS' },
+                { value: 'dark', label: 'DARK AREAS' },
+                { value: 'edges', label: 'EDGES' },
+                { value: 'random-zones', label: 'RANDOM ZONES' },
+                { value: 'center', label: 'CENTER' },
+                { value: 'borders', label: 'BORDERS' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setArtifactMaskMode(
+                  value as ArtifactMaskMode
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>THRESHOLD</div>
+
+            <UiSlider
+              min={0}
+              max={255}
+              step={1}
+              value={values.artifactMaskThreshold}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setArtifactMaskThreshold(value);
               }}
             />
           </>

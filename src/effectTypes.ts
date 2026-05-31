@@ -3,6 +3,7 @@ import type {
   SetStateAction
 } from 'react';
 
+import type { ArtifactMaskMode } from './effects/artifactMask';
 import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
@@ -62,6 +63,10 @@ export type EffectValues = {
   useDither: boolean;
   ditherMode: DitherMode;
   threshold: number;
+
+  useArtifactMask: boolean;
+  artifactMaskMode: ArtifactMaskMode;
+  artifactMaskThreshold: number;
 
   useGlitch: boolean;
   glitch: number;
@@ -207,6 +212,10 @@ export type EffectSetters = {
   setUseDither: Setter<boolean>;
   setDitherMode: Setter<DitherMode>;
   setThreshold: Setter<number>;
+
+  setUseArtifactMask: Setter<boolean>;
+  setArtifactMaskMode: Setter<ArtifactMaskMode>;
+  setArtifactMaskThreshold: Setter<number>;
 
   setUseGlitch: Setter<boolean>;
   setGlitch: Setter<number>;

@@ -1,3 +1,4 @@
+import type { ArtifactMaskMode } from './effects/artifactMask';
 import type { DitherMode } from './effects/dither';
 import type { PatternDitherShape } from './effects/patternDither';
 import type { DataOverlayMode } from './effects/dataOverlay';
@@ -53,6 +54,10 @@ export interface EffectPreset {
   useDither: boolean;
   ditherMode: DitherMode;
   threshold: number;
+
+  useArtifactMask: boolean;
+  artifactMaskMode: ArtifactMaskMode;
+  artifactMaskThreshold: number;
 
   useGlitch: boolean;
   glitch: number;
@@ -198,6 +203,10 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   useDither: false,
   ditherMode: 'floyd-steinberg',
   threshold: 255,
+
+  useArtifactMask: false,
+  artifactMaskMode: 'all',
+  artifactMaskThreshold: 128,
 
   useGlitch: false,
   glitch: 0,
