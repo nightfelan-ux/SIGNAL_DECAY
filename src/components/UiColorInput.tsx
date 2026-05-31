@@ -311,6 +311,7 @@ function ColorArea({
   onChange: (value: HsvColor) => void;
 }) {
   const areaRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
 
   const handlePointer = (clientX: number, clientY: number) => {
     const area = areaRef.current;
@@ -347,14 +348,21 @@ function ColorArea({
       }}
       onPointerDown={(event) => {
         event.preventDefault();
+        isDraggingRef.current = true;
         event.currentTarget.setPointerCapture(event.pointerId);
 
         handlePointer(event.clientX, event.clientY);
       }}
       onPointerMove={(event) => {
-        if (event.buttons !== 1) return;
+        if (!isDraggingRef.current) return;
 
         handlePointer(event.clientX, event.clientY);
+      }}
+      onPointerUp={() => {
+        isDraggingRef.current = false;
+      }}
+      onLostPointerCapture={() => {
+        isDraggingRef.current = false;
       }}
     >
       <div className="ui-color-area-white" />
@@ -379,6 +387,7 @@ function HueSlider({
   onChange: (value: HsvColor) => void;
 }) {
   const sliderRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
 
   const handlePointer = (clientX: number) => {
     const slider = sliderRef.current;
@@ -395,7 +404,9 @@ function HueSlider({
 
     onChange({
       ...hsv,
-      h: Math.round(x * 360)
+      h: Math.round(x * 360),
+      s: hsv.s <= 0.01 ? 1 : hsv.s,
+      v: hsv.v <= 0.01 ? 1 : hsv.v
     });
   };
 
@@ -405,14 +416,21 @@ function HueSlider({
       className="ui-color-hue"
       onPointerDown={(event) => {
         event.preventDefault();
+        isDraggingRef.current = true;
         event.currentTarget.setPointerCapture(event.pointerId);
 
         handlePointer(event.clientX);
       }}
       onPointerMove={(event) => {
-        if (event.buttons !== 1) return;
+        if (!isDraggingRef.current) return;
 
         handlePointer(event.clientX);
+      }}
+      onPointerUp={() => {
+        isDraggingRef.current = false;
+      }}
+      onLostPointerCapture={() => {
+        isDraggingRef.current = false;
       }}
     >
       <div
