@@ -1,4 +1,5 @@
 import type { ArtifactMaskMode } from './effects/artifactMask';
+import type { ChannelPacketLossChannel } from './effects/channelPacketLoss';
 import type { DitherMode } from './effects/dither';
 import type { PatternDitherShape } from './effects/patternDither';
 import type { DataOverlayMode } from './effects/dataOverlay';
@@ -71,6 +72,12 @@ export interface EffectPreset {
   codecDamageAmount: number;
   codecDamageChromaShift: number;
   codecDamageColorDepth: number;
+
+  useChannelPacketLoss: boolean;
+  channelPacketLossChannel: ChannelPacketLossChannel;
+  channelPacketLossBlockSize: number;
+  channelPacketLossAmount: number;
+  channelPacketLossShift: number;
 
   useMotionSmear: boolean;
   motionSmearDirection: MotionSmearDirection;
@@ -220,6 +227,12 @@ const DEFAULT_PRESET: Omit<EffectPreset, 'name'> = {
   codecDamageAmount: 0.35,
   codecDamageChromaShift: 3,
   codecDamageColorDepth: 8,
+
+  useChannelPacketLoss: false,
+  channelPacketLossChannel: 'rgb',
+  channelPacketLossBlockSize: 20,
+  channelPacketLossAmount: 0.35,
+  channelPacketLossShift: 12,
 
   useMotionSmear: false,
   motionSmearDirection: 'horizontal',
@@ -1871,6 +1884,12 @@ export const PRESETS: EffectPreset[] = [
     codecDamageAmount: 0.62,
     codecDamageChromaShift: 9,
     codecDamageColorDepth: 5,
+
+    useChannelPacketLoss: true,
+    channelPacketLossChannel: 'rgb',
+    channelPacketLossBlockSize: 24,
+    channelPacketLossAmount: 0.42,
+    channelPacketLossShift: 28,
 
     useMotionSmear: true,
     motionSmearDirection: 'horizontal',

@@ -24,6 +24,7 @@ import type {
   PixelSortDirection,
   PixelSortMode
 } from './effectTypes';
+import type { ChannelPacketLossChannel } from './effects/channelPacketLoss';
 import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { ArtifactMaskMode } from './effects/artifactMask';
@@ -223,6 +224,27 @@ function App() {
     codecDamageColorDepth,
     setCodecDamageColorDepth
   ] = useState(8);
+
+  const [
+    useChannelPacketLoss,
+    setUseChannelPacketLoss
+  ] = useState(false);
+  const [
+    channelPacketLossChannel,
+    setChannelPacketLossChannel
+  ] = useState<ChannelPacketLossChannel>('rgb');
+  const [
+    channelPacketLossBlockSize,
+    setChannelPacketLossBlockSize
+  ] = useState(20);
+  const [
+    channelPacketLossAmount,
+    setChannelPacketLossAmount
+  ] = useState(0.35);
+  const [
+    channelPacketLossShift,
+    setChannelPacketLossShift
+  ] = useState(12);
 
   const [useMotionSmear, setUseMotionSmear] =
     useState(false);
@@ -521,6 +543,12 @@ function App() {
       codecDamageChromaShift,
       codecDamageColorDepth,
 
+      useChannelPacketLoss,
+      channelPacketLossChannel,
+      channelPacketLossBlockSize,
+      channelPacketLossAmount,
+      channelPacketLossShift,
+
       useMotionSmear,
       motionSmearDirection,
       motionSmearLength,
@@ -653,6 +681,11 @@ function App() {
       codecDamageAmount,
       codecDamageChromaShift,
       codecDamageColorDepth,
+      useChannelPacketLoss,
+      channelPacketLossChannel,
+      channelPacketLossBlockSize,
+      channelPacketLossAmount,
+      channelPacketLossShift,
       useMotionSmear,
       motionSmearDirection,
       motionSmearLength,
@@ -790,6 +823,12 @@ function App() {
       setCodecDamageAmount,
       setCodecDamageChromaShift,
       setCodecDamageColorDepth,
+
+      setUseChannelPacketLoss,
+      setChannelPacketLossChannel,
+      setChannelPacketLossBlockSize,
+      setChannelPacketLossAmount,
+      setChannelPacketLossShift,
 
       setUseMotionSmear,
       setMotionSmearDirection,
@@ -1846,6 +1885,7 @@ function EffectSections({
         values.usePixelSort,
         values.useGlitch,
         values.useCodecDamage,
+        values.useChannelPacketLoss,
         values.useMotionSmear,
         values.useChromatic,
         values.useNoise,
@@ -3194,6 +3234,79 @@ function EffectSections({
 
       <div style={orderedSectionStyle(34, 'distortion')}>
         <UiCheckbox
+          checked={values.useChannelPacketLoss}
+          onChange={(checked) => {
+            runWithoutPanelJump(() => {
+              setters.setUseChannelPacketLoss(checked);
+            });
+          }}
+          label="Channel Packet Loss"
+        />
+
+        {values.useChannelPacketLoss && (
+          <>
+            <div style={sliderLabelStyle}>CHANNEL</div>
+
+            <UiSelect
+              value={values.channelPacketLossChannel}
+              options={[
+                { value: 'rgb', label: 'RGB' },
+                { value: 'red', label: 'RED' },
+                { value: 'green', label: 'GREEN' },
+                { value: 'blue', label: 'BLUE' }
+              ]}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setChannelPacketLossChannel(
+                  value as ChannelPacketLossChannel
+                );
+              }}
+            />
+
+            <div style={sliderLabelStyle}>BLOCK SIZE</div>
+
+            <UiSlider
+              min={4}
+              max={128}
+              step={1}
+              value={values.channelPacketLossBlockSize}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setChannelPacketLossBlockSize(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>LOSS</div>
+
+            <UiSlider
+              min={0}
+              max={1}
+              step={0.05}
+              value={values.channelPacketLossAmount}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setChannelPacketLossAmount(value);
+              }}
+            />
+
+            <div style={sliderLabelStyle}>SHIFT</div>
+
+            <UiSlider
+              min={0}
+              max={96}
+              step={1}
+              value={values.channelPacketLossShift}
+              onChange={(value) => {
+                markAsCustom();
+                setters.setChannelPacketLossShift(value);
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      <div style={orderedSectionStyle(35, 'distortion')}>
+        <UiCheckbox
           checked={values.useMotionSmear}
           onChange={(checked) => {
             runWithoutPanelJump(() => {
@@ -3263,7 +3376,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(35, 'distortion')}>
+      <div style={orderedSectionStyle(37, 'distortion')}>
         <UiCheckbox
           checked={values.useChromatic}
           onChange={(checked) => {
@@ -3388,7 +3501,7 @@ function EffectSections({
         )}
       </div>
 
-      <div style={orderedSectionStyle(37, 'distortion')}>
+      <div style={orderedSectionStyle(38, 'distortion')}>
         <UiCheckbox
           checked={values.useScanlines}
           onChange={(checked) => {

@@ -157,6 +157,20 @@ export function restoreEffectsSnapshot(
     snapshot.codecDamageColorDepth
   );
 
+  setters.setUseChannelPacketLoss(snapshot.useChannelPacketLoss);
+  setters.setChannelPacketLossChannel(
+    snapshot.channelPacketLossChannel
+  );
+  setters.setChannelPacketLossBlockSize(
+    snapshot.channelPacketLossBlockSize
+  );
+  setters.setChannelPacketLossAmount(
+    snapshot.channelPacketLossAmount
+  );
+  setters.setChannelPacketLossShift(
+    snapshot.channelPacketLossShift
+  );
+
   setters.setUseMotionSmear(snapshot.useMotionSmear);
   setters.setMotionSmearDirection(snapshot.motionSmearDirection);
   setters.setMotionSmearLength(snapshot.motionSmearLength);
@@ -328,6 +342,12 @@ export function clearEffectSettings(setters: EffectStateSetters) {
   setters.setCodecDamageAmount(0.35);
   setters.setCodecDamageChromaShift(3);
   setters.setCodecDamageColorDepth(8);
+
+  setters.setUseChannelPacketLoss(false);
+  setters.setChannelPacketLossChannel('rgb');
+  setters.setChannelPacketLossBlockSize(20);
+  setters.setChannelPacketLossAmount(0.35);
+  setters.setChannelPacketLossShift(12);
 
   setters.setUseMotionSmear(false);
   setters.setMotionSmearDirection('horizontal');
@@ -504,6 +524,20 @@ export function applyEffectPreset(
   );
   setters.setCodecDamageColorDepth(
     preset.codecDamageColorDepth
+  );
+
+  setters.setUseChannelPacketLoss(preset.useChannelPacketLoss);
+  setters.setChannelPacketLossChannel(
+    preset.channelPacketLossChannel
+  );
+  setters.setChannelPacketLossBlockSize(
+    preset.channelPacketLossBlockSize
+  );
+  setters.setChannelPacketLossAmount(
+    preset.channelPacketLossAmount
+  );
+  setters.setChannelPacketLossShift(
+    preset.channelPacketLossShift
   );
 
   setters.setUseMotionSmear(preset.useMotionSmear);

@@ -1,5 +1,6 @@
 import { applyAscii } from './effects/ascii';
 import { applyArtifactMask } from './effects/artifactMask';
+import { applyChannelPacketLoss } from './effects/channelPacketLoss';
 import { applyChromatic } from './effects/chromatic';
 import { applyCodecDamage } from './effects/codecDamage';
 import { applyDataOverlay } from './effects/dataOverlay';
@@ -407,6 +408,22 @@ export function processImage({
       chromaShift: values.codecDamageChromaShift,
       colorDepth: values.codecDamageColorDepth,
       random: createSeededRandom(activeSeed, 'codec-damage')
+    });
+  }
+
+  if (
+    values.useChannelPacketLoss &&
+    values.channelPacketLossAmount > 0
+  ) {
+    applyChannelPacketLoss(ctx, width, height, {
+      channel: values.channelPacketLossChannel,
+      blockSize: values.channelPacketLossBlockSize,
+      amount: values.channelPacketLossAmount,
+      shift: values.channelPacketLossShift,
+      random: createSeededRandom(
+        activeSeed,
+        'channel-packet-loss'
+      )
     });
   }
 

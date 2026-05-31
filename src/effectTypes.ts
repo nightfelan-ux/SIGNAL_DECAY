@@ -4,6 +4,7 @@ import type {
 } from 'react';
 
 import type { ArtifactMaskMode } from './effects/artifactMask';
+import type { ChannelPacketLossChannel } from './effects/channelPacketLoss';
 import type { DitherMode } from './effects/dither';
 import type { DataOverlayMode } from './effects/dataOverlay';
 import type { HudFrameStyle } from './effects/hudFrame';
@@ -80,6 +81,12 @@ export type EffectValues = {
   codecDamageAmount: number;
   codecDamageChromaShift: number;
   codecDamageColorDepth: number;
+
+  useChannelPacketLoss: boolean;
+  channelPacketLossChannel: ChannelPacketLossChannel;
+  channelPacketLossBlockSize: number;
+  channelPacketLossAmount: number;
+  channelPacketLossShift: number;
 
   useMotionSmear: boolean;
   motionSmearDirection: MotionSmearDirection;
@@ -229,6 +236,12 @@ export type EffectSetters = {
   setCodecDamageAmount: Setter<number>;
   setCodecDamageChromaShift: Setter<number>;
   setCodecDamageColorDepth: Setter<number>;
+
+  setUseChannelPacketLoss: Setter<boolean>;
+  setChannelPacketLossChannel: Setter<ChannelPacketLossChannel>;
+  setChannelPacketLossBlockSize: Setter<number>;
+  setChannelPacketLossAmount: Setter<number>;
+  setChannelPacketLossShift: Setter<number>;
 
   setUseMotionSmear: Setter<boolean>;
   setMotionSmearDirection: Setter<MotionSmearDirection>;
